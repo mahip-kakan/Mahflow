@@ -22,6 +22,9 @@ use crate::audio_toolkit::{
 enum Cmd {
     Start,
     Stop(mpsc::Sender<Vec<f32>>),
+    /// Reply with a *copy* of the audio captured so far without stopping.
+    /// Used by the live-preview feature for rolling re-transcription.
+    Snapshot(mpsc::Sender<Vec<f32>>),
     Shutdown,
 }
 
@@ -208,6 +211,23 @@ impl AudioRecorder {
             tx.send(Cmd::Stop(resp_tx))?;
         }
         Ok(resp_rx.recv()?) // wait for the samples
+    }
+
+    /// Return a copy of the audio captured so far WITHOUT stopping recording.
+    ///
+    /// The worker only drains commands after it receives an audio chunk, so the
+    /// reply arrives within a frame or two while audio is actively flowing. A
+    /// short timeout guards against the rare case where the stream has gone
+    /// silent (e.g. recording just ended), so this never blocks the caller —
+    /// and thus never deadlocks against `stop()`.
+    pub fn snapshot(&self) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+        let (resp_tx, resp_rx) = mpsc::channel();
+        if let Some(tx) = &self.cmd_tx {
+            tx.send(Cmd::Snapshot(resp_tx))?;
+            Ok(resp_rx.recv_timeout(Duration::from_millis(250))?)
+        } else {
+            Ok(Vec::new())
+        }
     }
 
     pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -518,6 +538,11 @@ fn run_consumer(
                     // Resume the audio callback so the consumer loop can continue
                     // receiving chunks (important for always-on microphone mode).
                     stop_flag.store(false, Ordering::Relaxed);
+                }
+                Cmd::Snapshot(reply_tx) => {
+                    // Best-effort copy of the speech captured so far. If the
+                    // receiver has already gone away (timed out), ignore the error.
+                    let _ = reply_tx.send(processed_samples.clone());
                 }
                 Cmd::Shutdown => {
                     stop_flag.store(true, Ordering::Relaxed);

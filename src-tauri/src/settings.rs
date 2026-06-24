@@ -410,6 +410,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub experimental_enabled: bool,
     #[serde(default)]
+    pub live_preview_enabled: bool,
+    #[serde(default)]
     pub lazy_stream_close: bool,
     #[serde(default)]
     pub keyboard_implementation: KeyboardImplementation,
@@ -803,6 +805,7 @@ pub fn get_default_settings() -> AppSettings {
         append_trailing_space: false,
         app_language: default_app_language(),
         experimental_enabled: false,
+        live_preview_enabled: false,
         lazy_stream_close: false,
         keyboard_implementation: KeyboardImplementation::default(),
         show_tray_icon: default_show_tray_icon(),

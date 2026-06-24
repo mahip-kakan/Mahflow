@@ -489,6 +489,24 @@ impl AudioRecordingManager {
         )
     }
 
+    /// Snapshot the audio captured so far for the current recording, without
+    /// stopping it. Returns `None` if we're not recording or the snapshot
+    /// couldn't be obtained. Used by the live-preview feature.
+    pub fn get_partial_samples(&self) -> Option<Vec<f32>> {
+        if !self.is_recording() {
+            return None;
+        }
+        // try_lock so a snapshot never blocks an in-flight stop/start that holds
+        // the recorder lock; we'll simply skip this preview tick instead.
+        let recorder = self.recorder.try_lock().ok()?;
+        let samples = recorder.as_ref()?.snapshot().ok()?;
+        if samples.is_empty() {
+            None
+        } else {
+            Some(samples)
+        }
+    }
+
     /// Cancel any ongoing recording without returning audio samples
     pub fn cancel_recording(&self) {
         let mut state = self.state.lock().unwrap();

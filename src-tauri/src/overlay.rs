@@ -35,6 +35,35 @@ tauri_panel! {
 const OVERLAY_WIDTH: f64 = 172.0;
 const OVERLAY_HEIGHT: f64 = 36.0;
 
+/// Larger caption-card dimensions used while the live-transcription preview is
+/// enabled. The card shows the running transcript as a wrapping paragraph
+/// (newest lines at the bottom, older ones scrolling up), so it needs both
+/// extra width and extra height. The window is a fixed transparent canvas at
+/// this size; the visible card grows upward inside it (bottom-anchored) and
+/// only starts scrolling once it fills the height.
+const OVERLAY_WIDTH_LIVE: f64 = 520.0;
+const OVERLAY_HEIGHT_LIVE: f64 = 220.0;
+
+/// The overlay's logical width depends on whether live preview is on. We size
+/// it at show-time (see `update_overlay_position`) so toggling the setting
+/// takes effect on the next recording without an app restart.
+fn overlay_width(app_handle: &AppHandle) -> f64 {
+    if settings::get_settings(app_handle).live_preview_enabled {
+        OVERLAY_WIDTH_LIVE
+    } else {
+        OVERLAY_WIDTH
+    }
+}
+
+/// Companion to `overlay_width`: taller window when live preview is on.
+fn overlay_height(app_handle: &AppHandle) -> f64 {
+    if settings::get_settings(app_handle).live_preview_enabled {
+        OVERLAY_HEIGHT_LIVE
+    } else {
+        OVERLAY_HEIGHT
+    }
+}
+
 #[cfg(target_os = "macos")]
 const OVERLAY_TOP_OFFSET: f64 = 46.0;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
@@ -211,11 +240,11 @@ fn calculate_overlay_position(app_handle: &AppHandle) -> Option<(f64, f64)> {
 
     let settings = settings::get_settings(app_handle);
 
-    let x = monitor_x + (monitor_width - OVERLAY_WIDTH) / 2.0;
+    let x = monitor_x + (monitor_width - overlay_width(app_handle)) / 2.0;
     let y = match settings.overlay_position {
         OverlayPosition::Top => monitor_y + OVERLAY_TOP_OFFSET,
         OverlayPosition::Bottom | OverlayPosition::None => {
-            monitor_y + monitor_height - OVERLAY_HEIGHT - OVERLAY_BOTTOM_OFFSET
+            monitor_y + monitor_height - overlay_height(app_handle) - OVERLAY_BOTTOM_OFFSET
         }
     };
 
@@ -245,7 +274,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     )
     .title("Recording")
     .resizable(false)
-    .inner_size(OVERLAY_WIDTH, OVERLAY_HEIGHT)
+    .inner_size(overlay_width(app_handle), overlay_height(app_handle))
     .shadow(false)
     .maximizable(false)
     .minimizable(false)
@@ -295,8 +324,8 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
             .position(tauri::Position::Logical(tauri::LogicalPosition { x, y }))
             .level(PanelLevel::Status)
             .size(tauri::Size::Logical(tauri::LogicalSize {
-                width: OVERLAY_WIDTH,
-                height: OVERLAY_HEIGHT,
+                width: overlay_width(app_handle),
+                height: overlay_height(app_handle),
             }))
             .has_shadow(false)
             .transparent(true)
@@ -362,6 +391,15 @@ pub fn update_overlay_position(app_handle: &AppHandle) {
         {
             update_gtk_layer_shell_anchors(&overlay_window);
         }
+
+        // Size the overlay to match the current live-preview setting before we
+        // position it, so enabling/disabling live preview takes effect on the
+        // next recording without restarting the app. Position is computed with
+        // the same width, keeping the pill centered.
+        let _ = overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+            width: overlay_width(app_handle),
+            height: overlay_height(app_handle),
+        }));
 
         if let Some((x, y)) = calculate_overlay_position(app_handle) {
             let _ = overlay_window

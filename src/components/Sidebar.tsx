@@ -93,31 +93,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
   return (
-    <div className="flex flex-col w-40 h-full border-e border-mid-gray/20 items-center px-2">
+    <div className="glass-panel flex flex-col w-40 h-full border-e border-mid-gray/15 items-center px-2">
       <MahflowTextLogo width={120} className="m-4" />
-      <div className="flex flex-col w-full items-center gap-1 pt-2 border-t border-mid-gray/20">
+      <div className="flex flex-col w-full items-center gap-1 pt-2 border-t border-mid-gray/15">
         {availableSections.map((section) => {
           const Icon = section.icon;
           const isActive = activeSection === section.id;
 
           return (
-            <div
+            <button
               key={section.id}
-              className={`flex gap-2 items-center p-2 w-full rounded-lg cursor-pointer transition-colors ${
+              type="button"
+              aria-current={isActive ? "page" : undefined}
+              title={t(section.labelKey)}
+              className={`group relative flex gap-2 items-center p-2 w-full rounded-lg cursor-pointer text-start transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-background-ui/60 ${
                 isActive
-                  ? "bg-logo-primary/80"
-                  : "hover:bg-mid-gray/20 hover:opacity-100 opacity-85"
+                  ? "bg-background-ui/90 text-white shadow-sm"
+                  : "text-text/70 hover:text-text hover:bg-mid-gray/10 active:bg-mid-gray/15"
               }`}
               onClick={() => onSectionChange(section.id)}
             >
-              <Icon width={24} height={24} className="shrink-0" />
-              <p
-                className="text-sm font-medium truncate"
-                title={t(section.labelKey)}
-              >
+              <span
+                aria-hidden="true"
+                className={`absolute inset-y-1.5 start-0 w-[3px] rounded-full bg-white/90 transition-opacity duration-200 ${
+                  isActive ? "opacity-100" : "opacity-0"
+                }`}
+              />
+              <Icon
+                width={20}
+                height={20}
+                className={`shrink-0 transition-colors ${
+                  isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"
+                }`}
+              />
+              <p className="text-sm font-medium truncate">
                 {t(section.labelKey)}
               </p>
-            </div>
+            </button>
           );
         })}
       </div>

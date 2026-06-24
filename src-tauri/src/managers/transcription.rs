@@ -73,6 +73,12 @@ pub struct TranscriptionManager {
     watcher_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
     is_loading: Arc<Mutex<bool>>,
     loading_condvar: Arc<Condvar>,
+    /// Serializes whole `transcribe()` calls. The engine is taken *out* of its
+    /// mutex during inference, so two concurrent transcriptions would have the
+    /// second one find `None` and error. The live-preview loop and the final
+    /// transcription both go through `transcribe()`, so this lock guarantees
+    /// they run one at a time.
+    transcribe_lock: Arc<Mutex<()>>,
 }
 
 impl TranscriptionManager {
@@ -87,6 +93,7 @@ impl TranscriptionManager {
             watcher_handle: Arc::new(Mutex::new(None)),
             is_loading: Arc::new(Mutex::new(false)),
             loading_condvar: Arc::new(Condvar::new()),
+            transcribe_lock: Arc::new(Mutex::new(())),
         };
 
         // Start the idle watcher
@@ -444,6 +451,14 @@ impl TranscriptionManager {
                 "Simulated transcription failure (MAHFLOW_FORCE_TRANSCRIPTION_FAILURE)"
             ));
         }
+
+        // Serialize against any other transcription (notably the live-preview
+        // loop) for the whole call. Recover from poisoning so a prior panic
+        // doesn't wedge the app.
+        let _serial = self
+            .transcribe_lock
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         // Update last activity timestamp
         self.touch_activity();

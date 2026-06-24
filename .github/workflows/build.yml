@@ -303,7 +303,7 @@ jobs:
         shell: bash
         run: |
           ORT_VERSION="1.24.2"
-          curl -L -o ort.tgz "https://blob.github.com/mahip-kakan/Mahflow/onnxruntime-osx-x86_64-${ORT_VERSION}.tgz"
+          curl -L -o ort.tgz "https://blob.handy.computer/onnxruntime-osx-x86_64-${ORT_VERSION}.tgz"
           tar xzf ort.tgz
           ORT_DIR="$(pwd)/onnxruntime-osx-x86_64-${ORT_VERSION}"
           echo "ORT_LIB_LOCATION=$ORT_DIR/lib" >> $GITHUB_ENV
@@ -318,7 +318,7 @@ jobs:
         shell: bash
         run: |
           ORT_VERSION="1.24.2"
-          curl -L -o ort.tgz "https://blob.github.com/mahip-kakan/Mahflow/onnxruntime-linux-x86_64-${ORT_VERSION}.tgz"
+          curl -L -o ort.tgz "https://blob.handy.computer/onnxruntime-linux-x86_64-${ORT_VERSION}.tgz"
           tar xzf ort.tgz
           ORT_DIR="$(pwd)/onnxruntime-linux-x86_64-${ORT_VERSION}"
           echo "ORT_LIB_LOCATION=$ORT_DIR/lib" >> $GITHUB_ENV

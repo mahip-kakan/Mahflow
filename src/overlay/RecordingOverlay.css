@@ -1,78 +1,256 @@
+/* ---- Overlay design tokens (self-contained) ----
+   The overlay runs in its own window and does NOT load App.css, so it cannot
+   read the app's Tailwind/theme tokens. We mirror the slate-glass palette here
+   so colors stay centralized and the pink default can never creep back in. */
+/* Fills the (transparent) overlay window and pins its content to the bottom
+   center. The pill/card therefore grows *upward* as live text accumulates,
+   without the native window ever resizing. */
+.overlay-root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 6px 8px;
+  box-sizing: border-box;
+}
+
 .recording-overlay {
+  --ov-bg: rgba(22, 27, 36, 0.74);
+  --ov-border: rgba(255, 255, 255, 0.1);
+  --ov-fg: #d7deec; /* soft slate-white for icons/text */
+  --ov-muted: #8b93a8; /* muted slate */
+  --ov-accent: #8b9bbd; /* slate-blue accent (matches --color-logo-primary) */
+  --ov-accent-bright: #aab8d6; /* brighter accent for highlights */
+
   height: 36px;
   width: 172px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
+  gap: 4px;
   padding: 6px;
-  background: #000000cc;
+  background: var(--ov-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--ov-border);
   border-radius: 18px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
   opacity: 0;
-  transition: opacity 300ms ease-out;
+  transform: translateY(6px) scale(0.97);
+  transition:
+    opacity 240ms ease-out,
+    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
   box-sizing: border-box;
 }
 
-.overlay-left {
+.recording-overlay.fade-in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.overlay-left,
+.overlay-middle,
+.overlay-right {
   display: flex;
   align-items: center;
 }
 
 .overlay-middle {
-  display: flex;
-  align-items: center;
   justify-content: center;
+  /* Grid/flex items default to min-width: auto, which refuses to shrink below
+     the content's intrinsic width. For a nowrap line that means the whole
+     sentence, forcing the 1fr track (and the live text) to overflow the pill.
+     min-width: 0 lets the track shrink so text-overflow: ellipsis can engage. */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .overlay-right {
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
 }
 
+/* ---- Icons ---- */
+.overlay-icon {
+  color: var(--ov-fg);
+  display: block;
+}
+
+.overlay-icon-accent {
+  color: var(--ov-accent-bright);
+}
+
+.overlay-spin {
+  animation: overlay-spin 0.9s linear infinite;
+}
+
+@keyframes overlay-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Recording: reactive waveform ---- */
 .bars-container {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: center;
   gap: 3px;
-  padding-bottom: 0px;
   height: 24px;
   overflow: hidden;
 }
 
 .bar {
   width: 6px;
-  background: #ffe5ee;
   max-height: 20px;
-  border-radius: 2px;
-  transition: height 80ms linear;
   min-height: 4px;
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    var(--ov-accent-bright) 0%,
+    var(--ov-accent) 100%
+  );
+  transition: height 80ms linear;
 }
 
-.recording-overlay.fade-in {
-  opacity: 1;
+/* ---- Transcribing / processing status ---- */
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.transcribing-text {
-  color: white;
+.status-text {
+  color: var(--ov-fg);
   font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  animation: transcribing-pulse 1.5s infinite ease-in-out;
 }
 
-@keyframes transcribing-pulse {
+/* ---- Live caption card (multi-line paragraph) ----
+   When live text is present the pill expands into a taller card: the icon and
+   cancel button anchor to the top, and the transcript wraps as a paragraph
+   that scrolls so the newest line stays at the bottom. */
+.recording-overlay.is-live-card {
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  align-items: flex-start;
+  padding: 10px 12px;
+  gap: 8px;
+  /* A real radius now that it's a card, not a tiny pill. */
+  border-radius: 16px;
+}
+
+.is-live-card .overlay-left,
+.is-live-card .overlay-right {
+  padding-top: 1px; /* optically align icons with the first text line */
+}
+
+.is-live-card .overlay-middle {
+  justify-content: flex-start;
+  align-items: flex-start;
+  align-self: stretch;
+  max-height: 184px;
+  overflow: hidden;
+}
+
+/* The scrolling transcript. JS keeps it pinned to the bottom; the top mask
+   fades older lines as they scroll up (Spotify-lyrics feel). Bottom-aligned so
+   short text sits at the bottom (out of the fade zone) instead of the top. */
+.live-paragraph {
+  width: 100%;
+  max-height: 184px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  text-align: start;
+  font-size: 14px;
+  line-height: 1.5;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 26px,
+    #000 100%
+  );
+  mask-image: linear-gradient(to bottom, transparent 0, #000 26px, #000 100%);
+}
+
+.live-paragraph-inner {
+  width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Older sentences: dimmed + normal weight. */
+.lp-history {
+  color: var(--ov-muted);
+  font-weight: 500;
+}
+
+/* The sentence being dictated right now: bright + bold. */
+.lp-current {
+  color: var(--ov-fg);
+  font-weight: 700;
+}
+
+/* Hide the scrollbar — the fade + auto-scroll communicate position. */
+.live-paragraph::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Typing-style bouncing dots — a calmer, on-brand replacement for the old
+   pink pulsing text. Pure CSS, no JS, no dependency. */
+.status-dots {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 12px;
+}
+
+.status-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ov-accent-bright);
+  animation: status-dot 1.2s infinite ease-in-out both;
+}
+
+.status-dots i:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.status-dots i:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes status-dot {
   0%,
+  80%,
   100% {
-    opacity: 0.6;
+    transform: translateY(0) scale(0.7);
+    opacity: 0.4;
   }
-  50% {
+  40% {
+    transform: translateY(-3px) scale(1);
     opacity: 1;
   }
 }
 
+/* ---- Cancel button ---- */
 .cancel-button {
   width: 24px;
   height: 24px;
+  border: none;
+  padding: 0;
   border-radius: 50%;
   background: transparent;
   display: flex;
@@ -86,10 +264,21 @@
 }
 
 .cancel-button:hover {
-  background: #faa2ca33;
+  background: rgba(215, 222, 236, 0.16);
   transform: scale(1.05);
 }
 
 .cancel-button:active {
   transform: scale(0.95);
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .recording-overlay,
+  .overlay-spin,
+  .status-dots i,
+  .bar {
+    transition: none;
+    animation: none;
+  }
 }

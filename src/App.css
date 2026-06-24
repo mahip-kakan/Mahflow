@@ -1,14 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  /* Design tokens */
-  --color-text: #0f0f0f;
-  --color-background: #fbfbfb;
-  --color-background-ui: #da5893;
-  --color-logo-primary: #faa2ca;
-  --color-logo-stroke: #382731;
-  --color-text-stroke: #f6f6f6;
-  --color-mid-gray: #808080;
+  /* ---- Mahflow design tokens (minimalist glass) ---- */
+  /* Cool neutral palette, single restrained slate-blue accent. No pink. */
+  --color-text: #1b2230;
+  --color-background: #eef1f6;
+  --color-background-ui: #5b6b8c; /* primary accent (slate blue) */
+  --color-logo-primary: #8b9bbd; /* soft accent / active states */
+  --color-logo-stroke: #1b2230;
+  --color-text-stroke: #ffffff;
+  --color-mid-gray: #707a8c;
+
+  /* Glass surface tokens */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.65);
+  --glass-shadow: 0 8px 30px rgba(27, 34, 48, 0.08);
 }
 
 :root {
@@ -17,14 +24,6 @@
   line-height: 24px;
   font-weight: 400;
 
-  /* Colors - Light Theme */
-  /* --color-text: #0f0f0f;
-  --color-background: #fbfbfb;
-  --color-logo-primary: #FAA2CA;
-  --color-logo-stroke: #382731;
-  --color-text-stroke: #f6f6f6; */
-
-  /* Typography settings */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -38,14 +37,26 @@
     transparent 70%
   );
 
-  /* Log console surface — a subtle shade off the app background so the live log
-     viewer reads as a distinct console. In light mode this is a faint gray code
-     block (matching other surfaces); the dark theme overrides it below. */
-  --color-log-surface: color-mix(in srgb, var(--color-background), black 6%);
+  /* Log console surface — a subtle translucent panel for the live log viewer. */
+  --color-log-surface: rgba(255, 255, 255, 0.45);
 
-  /* Apply colors */
   color: var(--color-text);
+
+  /* Soft cool gradient backdrop so the frosted-glass surfaces have depth to blur. */
   background-color: var(--color-background);
+  background-image: radial-gradient(
+      1200px 800px at 12% -8%,
+      rgba(139, 155, 189, 0.28),
+      transparent 60%
+    ),
+    radial-gradient(
+      1000px 700px at 110% 0%,
+      rgba(91, 107, 140, 0.22),
+      transparent 55%
+    ),
+    linear-gradient(180deg, #f2f4f9 0%, #e7ebf3 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 .container {
@@ -59,14 +70,57 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Colors - Dark Theme */
-    --color-text: #fbfbfb;
-    --color-background: #2c2b29;
-    --color-logo-primary: #f28cbb;
-    --color-logo-stroke: #fad1ed;
-    /* Just a bit darker than the (already dark) background, keeping its warm tint */
-    --color-log-surface: color-mix(in srgb, var(--color-background), black 15%);
+    /* Dark theme overrides (plain custom-property overrides; Tailwind tokens
+       resolve these at runtime via var()). */
+    --color-text: #e6eaf2;
+    --color-background: #191d26;
+    --color-background-ui: #6b7da3;
+    --color-logo-primary: #8b9bbd;
+    --color-logo-stroke: #e6eaf2;
+    --color-mid-gray: #8b93a3;
+
+    --glass-bg: rgba(38, 44, 56, 0.52);
+    --glass-bg-strong: rgba(42, 49, 63, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+
+    --color-log-surface: rgba(20, 24, 31, 0.55);
+
+    background-image: radial-gradient(
+        1200px 800px at 12% -8%,
+        rgba(107, 125, 163, 0.22),
+        transparent 60%
+      ),
+      radial-gradient(
+        1000px 700px at 110% 0%,
+        rgba(60, 71, 97, 0.25),
+        transparent 55%
+      ),
+      linear-gradient(180deg, #1c212c 0%, #14171f 100%);
   }
+}
+
+/* ---- Frosted glass surfaces ---- */
+.glass {
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-strong {
+  background-color: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-panel {
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(135%);
+  backdrop-filter: blur(16px) saturate(135%);
 }
 
 /* macOS - tint native overlay scrollbar thumb */
