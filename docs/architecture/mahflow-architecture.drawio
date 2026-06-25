@@ -1,0 +1,182 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="ctx" name="1. Context">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t" value="Mahflow — System Context (who/what it talks to)" style="text;html=1;fontSize=20;fontStyle=1;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="900" height="40" as="geometry"/></mxCell>
+        <mxCell id="sys" value="Mahflow&#10;(Tauri desktop app)&#10;React UI + Rust core" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="560" y="360" width="280" height="120" as="geometry"/></mxCell>
+        <mxCell id="user" value="User" style="shape=umlActor;html=1;fontSize=16;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1"><mxGeometry x="100" y="380" width="60" height="100" as="geometry"/></mxCell>
+        <mxCell id="mic" value="Microphone&#10;(via cpal)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="300" y="120" width="200" height="70" as="geometry"/></mxCell>
+        <mxCell id="hot" value="OS global hotkeys&#10;(tauri-plugin-global-shortcut / mahflow-keys)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="560" y="120" width="280" height="70" as="geometry"/></mxCell>
+        <mxCell id="acc" value="Accessibility / input&#10;(Enigo) + Clipboard" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="900" y="120" width="240" height="70" as="geometry"/></mxCell>
+        <mxCell id="tcc" value="macOS TCC permissions&#10;(Accessibility + Microphone)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="1010" y="380" width="240" height="80" as="geometry"/></mxCell>
+        <mxCell id="cdn" value="Model CDN&#10;blob.handy.computer&#10;(Whisper / Parakeet / etc.)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="300" y="660" width="240" height="80" as="geometry"/></mxCell>
+        <mxCell id="app" value="Active application&#10;(text gets typed/pasted here)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="600" y="660" width="220" height="80" as="geometry"/></mxCell>
+        <mxCell id="llm" value="LLM provider (optional)&#10;post-processing of text" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="900" y="660" width="240" height="80" as="geometry"/></mxCell>
+        <mxCell id="e1" value="press hotkey / speak" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1" source="user" target="sys"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="endArrow=block;html=1;" edge="1" parent="1" source="mic" target="sys"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="endArrow=block;html=1;" edge="1" parent="1" source="sys" target="hot"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" style="endArrow=block;html=1;" edge="1" parent="1" source="sys" target="acc"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" style="endArrow=block;startArrow=block;html=1;" edge="1" parent="1" source="sys" target="tcc"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" style="endArrow=block;html=1;" edge="1" parent="1" source="sys" target="cdn"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" style="endArrow=block;html=1;" edge="1" parent="1" source="sys" target="app"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" style="endArrow=block;html=1;dashed=1;" edge="1" parent="1" source="sys" target="llm"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sys" name="2. System &amp; Components">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" connect="1" arrows="1" fold="1" page="0" pageScale="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="st" value="Components — Frontend (React webviews) over Tauri IPC over Rust core" style="text;html=1;fontSize=20;fontStyle=1;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="1100" height="40" as="geometry"/></mxCell>
+        <mxCell id="feBox" value="FRONTEND (WebView, React + TS)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;verticalAlign=top;fillColor=none;strokeColor=#6c8ebf;dashed=1;" vertex="1" parent="1"><mxGeometry x="40" y="80" width="660" height="230" as="geometry"/></mxCell>
+        <mxCell id="mainwv" value="main window (/)&#10;App.tsx: onboarding FSM + Sidebar + Footer&#10;settings sections, model-selector" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="60" y="120" width="300" height="100" as="geometry"/></mxCell>
+        <mxCell id="ovwv" value="overlay window&#10;src/overlay/RecordingOverlay.tsx&#10;mic bars + live caption + states" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="380" y="120" width="300" height="100" as="geometry"/></mxCell>
+        <mxCell id="stores" value="Zustand stores: settingsStore (optimistic updates) · modelStore (downloads) · bindings.ts (Specta types)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="60" y="235" width="620" height="55" as="geometry"/></mxCell>
+        <mxCell id="ipc" value="TAURI IPC  —  commands (invoke ↓ 100+ handlers)   ·   events (emit ↑)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="40" y="340" width="660" height="50" as="geometry"/></mxCell>
+        <mxCell id="beBox" value="RUST CORE (src-tauri)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;verticalAlign=top;fillColor=none;strokeColor=#82b366;dashed=1;" vertex="1" parent="1"><mxGeometry x="40" y="420" width="1120" height="430" as="geometry"/></mxCell>
+        <mxCell id="lib" value="lib.rs run(): builder + plugins + setup()&#10;initialize_core_logic(): manage 4 managers + tray + overlay" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="60" y="450" width="360" height="70" as="geometry"/></mxCell>
+        <mxCell id="short" value="shortcut/ : Tauri global-shortcut OR mahflow-keys&#10;handle_shortcut_event()" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="440" y="450" width="320" height="70" as="geometry"/></mxCell>
+        <mxCell id="coord" value="TranscriptionCoordinator (own thread)&#10;PTT/toggle, Idle→Recording→Processing" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="780" y="450" width="360" height="70" as="geometry"/></mxCell>
+        <mxCell id="act" value="actions.rs — ACTION_MAP&#10;TranscribeAction::start / stop&#10;(orchestrates the whole pipeline)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="440" y="560" width="320" height="80" as="geometry"/></mxCell>
+        <mxCell id="amgr" value="AudioRecordingManager&#10;mic stream, VAD, mute, levels" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="60" y="680" width="250" height="70" as="geometry"/></mxCell>
+        <mxCell id="tmgr" value="TranscriptionManager&#10;load/unload ASR engines&#10;serialized transcribe()" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="340" y="680" width="250" height="70" as="geometry"/></mxCell>
+        <mxCell id="mmgr" value="ModelManager&#10;catalog, download, verify" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="620" y="680" width="240" height="70" as="geometry"/></mxCell>
+        <mxCell id="hmgr" value="HistoryManager&#10;SQLite + WAV files" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="890" y="680" width="240" height="70" as="geometry"/></mxCell>
+        <mxCell id="ovl" value="overlay.rs (window) · tray.rs · live_preview.rs" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="60" y="560" width="360" height="40" as="geometry"/></mxCell>
+        <mxCell id="eng" value="transcribe-rs engines: Whisper · Parakeet · Moonshine · SenseVoice · GigaAM · Canary · Cohere" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="340" y="780" width="500" height="50" as="geometry"/></mxCell>
+        <mxCell id="data" value="settings_store.json · models/ dir · history.db + recordings/" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="880" y="780" width="250" height="50" as="geometry"/></mxCell>
+        <mxCell id="s1" value="invoke" style="endArrow=block;startArrow=block;html=1;fontSize=11;" edge="1" parent="1" source="stores" target="ipc"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s2" style="endArrow=block;html=1;" edge="1" parent="1" source="ipc" target="lib"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s3" style="endArrow=block;html=1;" edge="1" parent="1" source="short" target="coord"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s4" style="endArrow=block;html=1;" edge="1" parent="1" source="coord" target="act"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s5" style="endArrow=block;html=1;" edge="1" parent="1" source="act" target="amgr"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s6" style="endArrow=block;html=1;" edge="1" parent="1" source="act" target="tmgr"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s7" style="endArrow=block;html=1;" edge="1" parent="1" source="act" target="hmgr"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s8" value="Arc ref" style="endArrow=block;html=1;fontSize=11;dashed=1;" edge="1" parent="1" source="tmgr" target="mmgr"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s9" style="endArrow=block;html=1;" edge="1" parent="1" source="tmgr" target="eng"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s10" style="endArrow=block;html=1;" edge="1" parent="1" source="hmgr" target="data"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="s11" value="events ↑ (show-overlay, mic-level, model-state-changed…)" style="endArrow=block;html=1;fontSize=11;dashed=1;" edge="1" parent="1" source="beBox" target="ipc"><mxGeometry relative="1" as="geometry"><mxPoint x="1140" y="410" as="sourcePoint"/><mxPoint x="700" y="365" as="targetPoint"/></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="flow" name="3. Audio to Text Data Flow">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" connect="1" arrows="1" fold="1" page="0" pageScale="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="ft" value="Data flow: microphone samples → 16 kHz frames → VAD → ASR → correction → paste" style="text;html=1;fontSize=20;fontStyle=1;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="1200" height="40" as="geometry"/></mxCell>
+        <mxCell id="f1" value="cpal input callback&#10;recorder.rs build_stream()&#10;→ mono f32 @ device rate" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="40" y="100" width="220" height="90" as="geometry"/></mxCell>
+        <mxCell id="f2" value="FrameResampler&#10;→ 16000 Hz, 30 ms frames&#10;(480 samples/frame)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="300" y="100" width="220" height="90" as="geometry"/></mxCell>
+        <mxCell id="f3" value="SmoothedVad(SileroVad 0.3)&#10;onset=2, prefill=15, hangover=15&#10;Speech kept · Noise dropped" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="560" y="100" width="240" height="90" as="geometry"/></mxCell>
+        <mxCell id="f4" value="processed_samples: Vec&lt;f32&gt;&#10;(16 kHz, speech only)&#10;recorder.stop() returns this" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="840" y="100" width="240" height="90" as="geometry"/></mxCell>
+        <mxCell id="f5" value="TranscriptionManager.transcribe()&#10;transcribe_lock serializes; engine dispatch" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="560" y="250" width="280" height="80" as="geometry"/></mxCell>
+        <mxCell id="f6w" value="Whisper path&#10;custom_words → initial_prompt&#10;(decoder bias)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="300" y="390" width="240" height="80" as="geometry"/></mxCell>
+        <mxCell id="f6o" value="Non-Whisper path&#10;apply_custom_words()&#10;fuzzy n-gram (Levenshtein+Soundex)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="600" y="390" width="260" height="80" as="geometry"/></mxCell>
+        <mxCell id="f7" value="filter_transcription_output()&#10;strip filler words + collapse stutters" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="440" y="520" width="320" height="70" as="geometry"/></mxCell>
+        <mxCell id="f8" value="process_transcription_output()&#10;OpenCC (zh) + optional LLM post-process" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="440" y="630" width="320" height="70" as="geometry"/></mxCell>
+        <mxCell id="f9" value="clipboard::paste() on MAIN thread&#10;Direct(Enigo.text) · CtrlV(clipboard+keystroke) · ExternalScript" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="420" y="740" width="360" height="70" as="geometry"/></mxCell>
+        <mxCell id="f10" value="Active application" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="500" y="850" width="200" height="50" as="geometry"/></mxCell>
+        <mxCell id="sb1" value="AudioVisualiser → 16 FFT bands" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="250" width="240" height="60" as="geometry"/></mxCell>
+        <mxCell id="sb2" value="emit 'mic-level' → overlay (≈24 Hz)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="40" y="340" width="240" height="50" as="geometry"/></mxCell>
+        <mxCell id="lp1" value="live_preview thread (every 600 ms)&#10;get_partial_samples() snapshot" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="1110" y="250" width="250" height="70" as="geometry"/></mxCell>
+        <mxCell id="lp2" value="emit 'partial-transcription' → overlay" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="1110" y="350" width="250" height="50" as="geometry"/></mxCell>
+        <mxCell id="g1" style="endArrow=block;html=1;" edge="1" parent="1" source="f1" target="f2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g2" style="endArrow=block;html=1;" edge="1" parent="1" source="f2" target="f3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g3" style="endArrow=block;html=1;" edge="1" parent="1" source="f3" target="f4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g4" value="on stop()" style="endArrow=block;html=1;fontSize=11;" edge="1" parent="1" source="f4" target="f5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g5" style="endArrow=block;html=1;" edge="1" parent="1" source="f5" target="f6w"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g6" style="endArrow=block;html=1;" edge="1" parent="1" source="f5" target="f6o"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g7" style="endArrow=block;html=1;" edge="1" parent="1" source="f6w" target="f7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g8" style="endArrow=block;html=1;" edge="1" parent="1" source="f6o" target="f7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g9" style="endArrow=block;html=1;" edge="1" parent="1" source="f7" target="f8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g10" style="endArrow=block;html=1;" edge="1" parent="1" source="f8" target="f9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g11" style="endArrow=block;html=1;" edge="1" parent="1" source="f9" target="f10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g12" style="endArrow=block;html=1;dashed=1;" edge="1" parent="1" source="f1" target="sb1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g13" style="endArrow=block;html=1;dashed=1;" edge="1" parent="1" source="sb1" target="sb2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g14" style="endArrow=block;html=1;dashed=1;" edge="1" parent="1" source="f4" target="lp1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g15" style="endArrow=block;html=1;dashed=1;" edge="1" parent="1" source="lp1" target="lp2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="g16" value="re-transcribe (display only)" style="endArrow=block;html=1;fontSize=10;dashed=1;" edge="1" parent="1" source="lp1" target="f5"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="seq" name="4. Recording Sequence">
+    <mxGraphModel dx="1600" dy="900" grid="0" guides="1" connect="1" arrows="1" fold="1" page="0" pageScale="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="qt" value="Sequence: press → record (+ live preview) → release → transcribe → paste" style="text;html=1;fontSize=20;fontStyle=1;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="1300" height="40" as="geometry"/></mxCell>
+        <mxCell id="ll1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="120" as="sourcePoint"/><mxPoint x="100" y="870" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ll2" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="120" as="sourcePoint"/><mxPoint x="280" y="870" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ll3" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="470" y="120" as="sourcePoint"/><mxPoint x="470" y="870" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ll4" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="120" as="sourcePoint"/><mxPoint x="680" y="870" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ll5" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="900" y="120" as="sourcePoint"/><mxPoint x="900" y="870" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ll6" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1110" y="120" as="sourcePoint"/><mxPoint x="1110" y="870" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ll7" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1300" y="120" as="sourcePoint"/><mxPoint x="1300" y="870" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ll8" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1480" y="120" as="sourcePoint"/><mxPoint x="1480" y="870" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="h1" value="User" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="25" y="70" width="150" height="46" as="geometry"/></mxCell>
+        <mxCell id="h2" value="Shortcut backend" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="205" y="70" width="150" height="46" as="geometry"/></mxCell>
+        <mxCell id="h3" value="Coordinator" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="395" y="70" width="150" height="46" as="geometry"/></mxCell>
+        <mxCell id="h4" value="TranscribeAction" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="605" y="70" width="150" height="46" as="geometry"/></mxCell>
+        <mxCell id="h5" value="Audio (Mgr+Recorder)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="825" y="70" width="150" height="46" as="geometry"/></mxCell>
+        <mxCell id="h6" value="TranscriptionMgr" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="1035" y="70" width="150" height="46" as="geometry"/></mxCell>
+        <mxCell id="h7" value="Overlay webview" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="1225" y="70" width="150" height="46" as="geometry"/></mxCell>
+        <mxCell id="h8" value="Active app" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="1405" y="70" width="150" height="46" as="geometry"/></mxCell>
+        <mxCell id="m1" value="1. press hotkey (pressed)" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="150" as="sourcePoint"/><mxPoint x="280" y="150" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m2" value="2. send_input(pressed, push_to_talk)" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="190" as="sourcePoint"/><mxPoint x="470" y="190" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m3" value="3. start()" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="470" y="230" as="sourcePoint"/><mxPoint x="680" y="230" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m4" value="4. initiate_model_load() [background]" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="270" as="sourcePoint"/><mxPoint x="1110" y="270" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m5" value="5. try_start_recording()" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="310" as="sourcePoint"/><mxPoint x="900" y="310" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m6" value="6. show-overlay 'recording'" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="350" as="sourcePoint"/><mxPoint x="1300" y="350" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m7" value="7. mic-level  (loop ≈24 Hz)" style="endArrow=block;html=1;fontSize=12;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="900" y="390" as="sourcePoint"/><mxPoint x="1300" y="390" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m8" value="8. live_preview loop: transcribe(snapshot) every 600 ms" style="endArrow=block;html=1;fontSize=12;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="430" as="sourcePoint"/><mxPoint x="1110" y="430" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m9" value="9. partial-transcription (loop)" style="endArrow=block;html=1;fontSize=12;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1110" y="470" as="sourcePoint"/><mxPoint x="1300" y="470" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="sep" value="— user ends recording —" style="text;html=1;fontSize=12;fontStyle=2;align=center;fillColor=#f5f5f5;" vertex="1" parent="1"><mxGeometry x="60" y="490" width="280" height="20" as="geometry"/></mxCell>
+        <mxCell id="m10" value="10. release / press again" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="530" as="sourcePoint"/><mxPoint x="280" y="530" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m11" value="11. send_input" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="570" as="sourcePoint"/><mxPoint x="470" y="570" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m12" value="12. stop()" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="470" y="610" as="sourcePoint"/><mxPoint x="680" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m13" value="13. show-overlay 'transcribing'" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="650" as="sourcePoint"/><mxPoint x="1300" y="650" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m14" value="14. stop_recording() ⇒ Vec&lt;f32&gt;" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="690" as="sourcePoint"/><mxPoint x="900" y="690" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m15" value="15. transcribe(samples)" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="730" as="sourcePoint"/><mxPoint x="1110" y="730" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m16" value="16. final corrected text" style="endArrow=open;html=1;fontSize=12;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1110" y="770" as="sourcePoint"/><mxPoint x="680" y="770" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m17" value="17. paste (run_on_main_thread)" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="810" as="sourcePoint"/><mxPoint x="1480" y="810" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m18" value="18. hide-overlay" style="endArrow=block;html=1;fontSize=12;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="680" y="850" as="sourcePoint"/><mxPoint x="1300" y="850" as="targetPoint"/></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fe" name="5. Frontend Data Flow">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" connect="1" arrows="1" fold="1" page="0" pageScale="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="et" value="Frontend data flow: optimistic settings writes &amp; event-driven model downloads" style="text;html=1;fontSize=20;fontStyle=1;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="1200" height="40" as="geometry"/></mxCell>
+        <mxCell id="lbl1" value="A) Settings write (optimistic)" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="80" width="500" height="30" as="geometry"/></mxCell>
+        <mxCell id="a1" value="Settings UI control&#10;e.g. ToggleSwitch" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="120" width="200" height="70" as="geometry"/></mxCell>
+        <mxCell id="a2" value="useSettings().updateSetting(key, value)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="280" y="120" width="220" height="70" as="geometry"/></mxCell>
+        <mxCell id="a3" value="settingsStore (Zustand)&#10;1. optimistic set&#10;2. settingUpdaters[key](value)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="540" y="115" width="240" height="80" as="geometry"/></mxCell>
+        <mxCell id="a4" value="commands.changeXSetting()&#10;(Specta → invoke)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="820" y="120" width="220" height="70" as="geometry"/></mxCell>
+        <mxCell id="a5" value="Rust handler →&#10;write_settings() → settings_store.json" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="1080" y="120" width="260" height="70" as="geometry"/></mxCell>
+        <mxCell id="a6" value="on error → rollback to original value" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" vertex="1" parent="1"><mxGeometry x="540" y="220" width="240" height="50" as="geometry"/></mxCell>
+        <mxCell id="ea1" style="endArrow=block;html=1;" edge="1" parent="1" source="a1" target="a2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ea2" style="endArrow=block;html=1;" edge="1" parent="1" source="a2" target="a3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ea3" style="endArrow=block;html=1;" edge="1" parent="1" source="a3" target="a4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ea4" style="endArrow=block;html=1;" edge="1" parent="1" source="a4" target="a5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ea5" style="endArrow=block;html=1;dashed=1;" edge="1" parent="1" source="a3" target="a6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="lbl2" value="B) Model download (event-driven)" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="330" width="500" height="30" as="geometry"/></mxCell>
+        <mxCell id="b1" value="ModelCard 'Download'&#10;modelStore.downloadModel(id)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="370" width="230" height="70" as="geometry"/></mxCell>
+        <mxCell id="b2" value="commands.downloadModel(id)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="310" y="370" width="220" height="70" as="geometry"/></mxCell>
+        <mxCell id="b3" value="ModelManager.download_model()&#10;download → verify → extract" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="570" y="370" width="260" height="70" as="geometry"/></mxCell>
+        <mxCell id="b4" value="emits events:&#10;model-download-progress / -complete /&#10;-verification-* / -extraction-*" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="870" y="365" width="280" height="80" as="geometry"/></mxCell>
+        <mxCell id="b5" value="modelStore listeners&#10;update progress; on complete → loadModels()" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="570" y="480" width="280" height="70" as="geometry"/></mxCell>
+        <mxCell id="b6" value="auto setActiveModel() (onboarding / selector)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="570" y="580" width="280" height="50" as="geometry"/></mxCell>
+        <mxCell id="eb1" style="endArrow=block;html=1;" edge="1" parent="1" source="b1" target="b2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="eb2" style="endArrow=block;html=1;" edge="1" parent="1" source="b2" target="b3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="eb3" style="endArrow=block;html=1;" edge="1" parent="1" source="b3" target="b4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="eb4" value="events ↑" style="endArrow=block;html=1;fontSize=11;dashed=1;" edge="1" parent="1" source="b4" target="b5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="eb5" style="endArrow=block;html=1;" edge="1" parent="1" source="b5" target="b6"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
