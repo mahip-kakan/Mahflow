@@ -19,13 +19,11 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
     const customWords = getSetting("custom_words") || [];
 
     const handleAddWord = () => {
-      const trimmedWord = newWord.trim();
+      // Allow multi-word entries (e.g. full names like "Mahip Kakan").
+      // Collapse internal whitespace runs to single spaces and trim the ends.
+      const trimmedWord = newWord.trim().replace(/\s+/g, " ");
       const sanitizedWord = trimmedWord.replace(/[<>"'&]/g, "");
-      if (
-        sanitizedWord &&
-        !sanitizedWord.includes(" ") &&
-        sanitizedWord.length <= 50
-      ) {
+      if (sanitizedWord && sanitizedWord.length <= 50) {
         if (customWords.includes(sanitizedWord)) {
           toast.error(
             t("settings.advanced.customWords.duplicate", {
@@ -76,8 +74,7 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
               onClick={handleAddWord}
               disabled={
                 !newWord.trim() ||
-                newWord.includes(" ") ||
-                newWord.trim().length > 50 ||
+                newWord.trim().replace(/\s+/g, " ").length > 50 ||
                 isUpdating("custom_words")
               }
               variant="primary"

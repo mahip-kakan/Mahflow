@@ -106,10 +106,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               type="button"
               aria-current={isActive ? "page" : undefined}
               title={t(section.labelKey)}
-              className={`group relative flex gap-2 items-center p-2 w-full rounded-lg cursor-pointer text-start transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-background-ui/60 ${
+              className={`group relative flex gap-2 items-center p-2 w-full rounded-xl cursor-pointer text-start transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-background-ui/60 ${
                 isActive
-                  ? "bg-background-ui/90 text-white shadow-sm"
-                  : "text-text/70 hover:text-text hover:bg-mid-gray/10 active:bg-mid-gray/15"
+                  ? "bg-background-ui text-white shadow-[0_6px_18px_rgba(79,100,216,0.4)]"
+                  : "text-text/70 hover:text-text hover:bg-white/40 dark:hover:bg-white/5"
               }`}
               onClick={() => onSectionChange(section.id)}
             >

@@ -1,21 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  /* ---- Mahflow design tokens (minimalist glass) ---- */
-  /* Cool neutral palette, single restrained slate-blue accent. No pink. */
-  --color-text: #1b2230;
-  --color-background: #eef1f6;
-  --color-background-ui: #5b6b8c; /* primary accent (slate blue) */
-  --color-logo-primary: #8b9bbd; /* soft accent / active states */
-  --color-logo-stroke: #1b2230;
+  /* ---- Mahflow design tokens (modern "liquid glass") ---- */
+  /* Cool neutral palette, single restrained indigo/slate accent. No pink. */
+  --color-text: #161b26;
+  --color-background: #eaeef6;
+  --color-background-ui: #4f64d8; /* primary accent (vivid indigo) */
+  --color-logo-primary: #7c8df0; /* soft accent / active states */
+  --color-logo-stroke: #161b26;
   --color-text-stroke: #ffffff;
-  --color-mid-gray: #707a8c;
+  --color-mid-gray: #6b7488;
 
-  /* Glass surface tokens */
+  /* ---- Glass surface tokens ----
+     Tint + hairline border + edge highlight + layered shadow are what make
+     glass read as glass (per 2026 best practice). Opacity is kept high enough
+     (>=55%) that text on these surfaces stays legible over the gradient. */
   --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-bg-strong: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.65);
-  --glass-shadow: 0 8px 30px rgba(27, 34, 48, 0.08);
+  --glass-bg-strong: rgba(255, 255, 255, 0.74);
+  --glass-border: rgba(255, 255, 255, 0.7);
+  /* Inset top highlight (the "rim" of the glass) + soft outer lift. */
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --glass-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 10px 34px rgba(22, 27, 38, 0.1),
+    0 2px 8px rgba(22, 27, 38, 0.06);
+  --glass-radius: 18px;
 }
 
 :root {
@@ -42,19 +50,26 @@
 
   color: var(--color-text);
 
-  /* Soft cool gradient backdrop so the frosted-glass surfaces have depth to blur. */
+  /* Vivid, layered gradient backdrop. Glass only reads as glass when there's
+     genuine color and depth behind it to refract — so we use three soft color
+     blobs (indigo / violet / aqua) over a cool base. */
   background-color: var(--color-background);
   background-image: radial-gradient(
-      1200px 800px at 12% -8%,
-      rgba(139, 155, 189, 0.28),
-      transparent 60%
+      1100px 760px at 8% -10%,
+      rgba(99, 116, 240, 0.34),
+      transparent 58%
     ),
     radial-gradient(
-      1000px 700px at 110% 0%,
-      rgba(91, 107, 140, 0.22),
-      transparent 55%
+      980px 720px at 108% 4%,
+      rgba(139, 110, 230, 0.26),
+      transparent 56%
     ),
-    linear-gradient(180deg, #f2f4f9 0%, #e7ebf3 100%);
+    radial-gradient(
+      900px 820px at 88% 112%,
+      rgba(72, 191, 205, 0.22),
+      transparent 60%
+    ),
+    linear-gradient(180deg, #f3f5fc 0%, #e6eaf5 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
@@ -72,55 +87,121 @@
   :root {
     /* Dark theme overrides (plain custom-property overrides; Tailwind tokens
        resolve these at runtime via var()). */
-    --color-text: #e6eaf2;
-    --color-background: #191d26;
-    --color-background-ui: #6b7da3;
-    --color-logo-primary: #8b9bbd;
-    --color-logo-stroke: #e6eaf2;
-    --color-mid-gray: #8b93a3;
+    --color-text: #e7eaf3;
+    --color-background: #14171f;
+    --color-background-ui: #7c8df0;
+    --color-logo-primary: #93a1f4;
+    --color-logo-stroke: #e7eaf3;
+    --color-mid-gray: #8b93a8;
 
-    --glass-bg: rgba(38, 44, 56, 0.52);
-    --glass-bg-strong: rgba(42, 49, 63, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    /* Dark glass is its own material: higher tint opacity so the surface
+       stays distinct, and a brighter border since the blur contrast drops. */
+    --glass-bg: rgba(34, 40, 54, 0.58);
+    --glass-bg-strong: rgba(38, 45, 61, 0.76);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    --glass-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 40px rgba(0, 0, 0, 0.45),
+      0 2px 10px rgba(0, 0, 0, 0.3);
 
-    --color-log-surface: rgba(20, 24, 31, 0.55);
+    --color-log-surface: rgba(18, 22, 30, 0.6);
 
     background-image: radial-gradient(
-        1200px 800px at 12% -8%,
-        rgba(107, 125, 163, 0.22),
-        transparent 60%
+        1100px 760px at 8% -10%,
+        rgba(99, 116, 240, 0.28),
+        transparent 58%
       ),
       radial-gradient(
-        1000px 700px at 110% 0%,
-        rgba(60, 71, 97, 0.25),
-        transparent 55%
+        980px 720px at 108% 4%,
+        rgba(120, 96, 210, 0.24),
+        transparent 56%
       ),
-      linear-gradient(180deg, #1c212c 0%, #14171f 100%);
+      radial-gradient(
+        900px 820px at 88% 112%,
+        rgba(52, 150, 168, 0.2),
+        transparent 60%
+      ),
+      linear-gradient(180deg, #181c27 0%, #11131a 100%);
   }
 }
 
-/* ---- Frosted glass surfaces ---- */
+/* ---- Frosted glass surfaces ----
+   Blur kept in the 14–20px sweet spot; tint + hairline border + inset edge
+   highlight + layered shadow are what sell the "glass". `will-change` keeps the
+   compositing cheap. */
 .glass {
   background-color: var(--glass-bg);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
+  will-change: transform;
 }
 
 .glass-strong {
   background-color: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
+  will-change: transform;
 }
 
 .glass-panel {
   background-color: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px) saturate(135%);
-  backdrop-filter: blur(16px) saturate(135%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: var(--glass-highlight);
+}
+
+/* A self-contained rounded glass card (the main building block for panels). */
+.glass-card {
+  background-color: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  backdrop-filter: blur(18px) saturate(165%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow);
+  will-change: transform;
+}
+
+/* Interactive glass (buttons / clickable tiles): subtle lift + brighter rim. */
+.glass-interactive {
+  transition:
+    background-color 160ms ease-out,
+    box-shadow 160ms ease-out,
+    transform 120ms ease-out;
+}
+.glass-interactive:hover {
+  background-color: var(--glass-bg-strong);
+  box-shadow:
+    var(--glass-highlight), 0 14px 40px rgba(22, 27, 38, 0.14);
+}
+.glass-interactive:active {
+  transform: translateY(1px) scale(0.997);
+}
+
+/* Accessibility / performance fallbacks: when the OS asks for reduced
+   transparency, or the browser can't do backdrop-filter, fall back to a solid
+   tinted surface so text contrast never depends on the blur. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-strong,
+  .glass-panel,
+  .glass-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: var(--color-background);
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-strong,
+  .glass-panel,
+  .glass-card {
+    background-color: var(--color-background);
+  }
 }
 
 /* macOS - tint native overlay scrollbar thumb */

@@ -39,20 +39,19 @@ type NonCreatableProps = {
 
 export type SelectProps = BaseProps & (CreatableProps | NonCreatableProps);
 
-const baseBackground =
-  "color-mix(in srgb, var(--color-mid-gray) 10%, transparent)";
+const baseBackground = "var(--glass-bg)";
 const hoverBackground =
   "color-mix(in srgb, var(--color-logo-primary) 12%, transparent)";
 const focusBackground =
   "color-mix(in srgb, var(--color-logo-primary) 20%, transparent)";
 const neutralBorder =
-  "color-mix(in srgb, var(--color-mid-gray) 80%, transparent)";
+  "color-mix(in srgb, var(--color-mid-gray) 30%, transparent)";
 
 const selectStyles: StylesConfig<SelectOption, false> = {
   control: (base, state) => ({
     ...base,
     minHeight: 40,
-    borderRadius: 6,
+    borderRadius: 10,
     borderColor: state.isFocused ? "var(--color-logo-primary)" : neutralBorder,
     boxShadow: state.isFocused
       ? "0 0 0 2px color-mix(in srgb, var(--color-logo-primary) 50%, transparent)"
@@ -98,14 +97,19 @@ const selectStyles: StylesConfig<SelectOption, false> = {
   menu: (provided) => ({
     ...provided,
     zIndex: 30,
-    backgroundColor: "var(--color-background)",
+    overflow: "hidden",
+    borderRadius: 14,
+    padding: 4,
+    backgroundColor: "var(--glass-bg-strong)",
+    backdropFilter: "blur(18px) saturate(165%)",
+    WebkitBackdropFilter: "blur(18px) saturate(165%)",
     color: "var(--color-text)",
-    border:
-      "1px solid color-mix(in srgb, var(--color-mid-gray) 30%, transparent)",
-    boxShadow: "0 10px 30px rgba(15, 15, 15, 0.2)",
+    border: "1px solid var(--glass-border)",
+    boxShadow: "var(--glass-shadow)",
   }),
   option: (base, state) => ({
     ...base,
+    borderRadius: 8,
     backgroundColor: state.isSelected
       ? focusBackground
       : state.isFocused

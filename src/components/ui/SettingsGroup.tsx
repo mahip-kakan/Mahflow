@@ -23,8 +23,8 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
           )}
         </div>
       )}
-      <div className="glass rounded-xl overflow-visible">
-        <div className="divide-y divide-mid-gray/15">{children}</div>
+      <div className="glass-card overflow-visible">
+        <div className="divide-y divide-mid-gray/10">{children}</div>
       </div>
     </div>
   );

@@ -19,15 +19,15 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    "font-medium rounded-lg border transition-all duration-150 cursor-pointer active:translate-y-[0.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background-ui/60 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0";
+    "font-medium rounded-xl border transition-all duration-150 cursor-pointer active:translate-y-[0.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background-ui/60 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0";
 
   const variantClasses = {
     primary:
-      "text-white bg-background-ui border-background-ui hover:bg-background-ui/80 hover:border-background-ui/80",
+      "text-white bg-background-ui border-background-ui/70 shadow-[0_6px_20px_rgba(79,100,216,0.35)] hover:bg-background-ui/85 hover:border-background-ui/60",
     "primary-soft":
       "text-text bg-logo-primary/20 border-transparent hover:bg-logo-primary/30",
     secondary:
-      "bg-mid-gray/10 border-mid-gray/20 hover:bg-background-ui/30 hover:border-logo-primary",
+      "glass glass-interactive text-text border-transparent",
     danger:
       "text-white bg-red-600 border-mid-gray/20 hover:bg-red-700 hover:border-red-700 focus-visible:ring-red-500/60",
     "danger-ghost":

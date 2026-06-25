@@ -66,7 +66,7 @@ Mahflow/
 
 ## Acknowledgments
 
-Mahflow is built on open-source work including [Handy](https://github.com/cjpais/Handy), [Whisper](https://github.com/openai/whisper), [Tauri](https://tauri.app/), and the wider speech-to-text community.
+Mahflow is built on open-source work including [Whisper](https://github.com/openai/whisper), [Tauri](https://tauri.app/), and the wider speech-to-text community.
 
 ## Author
 
