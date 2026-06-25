@@ -13,6 +13,35 @@ Mahflow is a privacy-focused desktop app that turns your voice into text. Press 
 
 ## Quick start (use the app)
 
+### Download & install (macOS — recommended)
+
+**Requirements:** a Mac with **Apple Silicon** (M1, M2, M3, or M4). Intel Macs are not supported yet.
+
+1. Go to the **[latest release](https://github.com/mahip-kakan/Mahflow/releases/latest)** and download **`Mahflow_<version>_aarch64.dmg`**.
+2. **Double-click** the downloaded `.dmg` to open it.
+3. **Drag the Mahflow icon onto the Applications folder** in the window that appears.
+4. Eject the disk image, then open **Mahflow** from Applications (or Launchpad/Spotlight).
+
+#### First launch: allow the app through macOS security
+
+Mahflow is not yet notarized by Apple, so macOS shows a warning **the first time only**. This is expected. Use any one of these:
+
+- **Easiest:** In Applications, **right-click** (or Control-click) **Mahflow → Open**, then click **Open** in the dialog.
+- **Or:** open  **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Mahflow message, then launch the app again.
+- **If you see _"Mahflow is damaged and can't be opened"_,** open the **Terminal** app and run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Mahflow.app
+```
+
+  then open Mahflow normally.
+
+#### After it opens
+
+1. Grant **Microphone** and **Accessibility** permissions when macOS prompts you (or in **System Settings → Privacy & Security**).
+2. The first launch **downloads a speech model**, so stay connected to the internet for that step. Everything runs **offline** afterward.
+3. Open **Settings**, pick a keyboard shortcut, then press it, speak, and release.
+
 ### Install from source (developers)
 
 See [BUILD.md](BUILD.md) for full setup. On Apple Silicon Mac:
