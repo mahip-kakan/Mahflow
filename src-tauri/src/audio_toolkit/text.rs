@@ -319,6 +319,149 @@ pub fn filter_transcription_output(
     filtered.trim().to_string()
 }
 
+/// Trims leading/trailing non-alphanumeric characters from a phrase while
+/// keeping interior characters (so "kakan," -> "kakan" but "g.p.t" is kept).
+fn trim_phrase_edges(phrase: &str) -> String {
+    phrase
+        .trim_matches(|c: char| !c.is_alphanumeric())
+        .to_string()
+}
+
+/// Applies exact, whole-word "learned corrections" to `text`.
+///
+/// Each `(from, to)` pair replaces whole-word/phrase occurrences of `from`
+/// with `to`. Matching is case-sensitive and bounded by word boundaries, so
+/// "kakan" is replaced but "kakanpur" is not. Longer `from` phrases are applied
+/// first so multi-word corrections win over single-word subsets.
+///
+/// # Arguments
+/// * `text` - The transcription text to correct
+/// * `corrections` - Slice of `(from, to)` replacement pairs
+pub fn apply_learned_corrections(text: &str, corrections: &[(String, String)]) -> String {
+    if corrections.is_empty() || text.is_empty() {
+        return text.to_string();
+    }
+
+    let mut ordered: Vec<&(String, String)> = corrections
+        .iter()
+        .filter(|(from, to)| !from.is_empty() && from != to)
+        .collect();
+    ordered.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+
+    let mut result = text.to_string();
+    for (from, to) in ordered {
+        let pattern = format!(r"\b{}\b", regex::escape(from));
+        if let Ok(re) = Regex::new(&pattern) {
+            // Replacement closure keeps any `$` in `to` literal.
+            result = re
+                .replace_all(&result, |_: &regex::Captures| to.clone())
+                .to_string();
+        }
+    }
+
+    result
+}
+
+/// Computes exact word/phrase corrections by diffing the original
+/// transcription against the user-corrected version.
+///
+/// Uses a token-level longest-common-subsequence diff. Each contiguous run of
+/// replaced words yields one `(from, to)` pair. Pure insertions and pure
+/// deletions are ignored (no reliable word mapping). Runs longer than 4 words
+/// on either side are skipped to avoid learning whole rewritten sentences.
+/// Edge punctuation is trimmed from both sides.
+///
+/// # Arguments
+/// * `original` - The transcription text Mahflow produced
+/// * `corrected` - The text after the user's edit
+pub fn compute_corrections(original: &str, corrected: &str) -> Vec<(String, String)> {
+    let a: Vec<&str> = original.split_whitespace().collect();
+    let b: Vec<&str> = corrected.split_whitespace().collect();
+    let n = a.len();
+    let m = b.len();
+
+    // LCS length table (dp[i][j] = LCS of a[i..], b[j..]).
+    let mut dp = vec![vec![0usize; m + 1]; n + 1];
+    for i in (0..n).rev() {
+        for j in (0..m).rev() {
+            dp[i][j] = if a[i] == b[j] {
+                dp[i + 1][j + 1] + 1
+            } else {
+                dp[i + 1][j].max(dp[i][j + 1])
+            };
+        }
+    }
+
+    let mut out: Vec<(String, String)> = Vec::new();
+    let mut del: Vec<&str> = Vec::new();
+    let mut ins: Vec<&str> = Vec::new();
+    let mut i = 0;
+    let mut j = 0;
+
+    while i < n && j < m {
+        if a[i] == b[j] {
+            flush_correction(&mut del, &mut ins, &mut out);
+            i += 1;
+            j += 1;
+        } else if dp[i + 1][j] >= dp[i][j + 1] {
+            del.push(a[i]);
+            i += 1;
+        } else {
+            ins.push(b[j]);
+            j += 1;
+        }
+    }
+    while i < n {
+        del.push(a[i]);
+        i += 1;
+    }
+    while j < m {
+        ins.push(b[j]);
+        j += 1;
+    }
+    flush_correction(&mut del, &mut ins, &mut out);
+
+    // De-duplicate while preserving order.
+    let mut seen = std::collections::HashSet::new();
+    out.retain(|pair| seen.insert(pair.clone()));
+    out
+}
+
+/// Emits a `(from, to)` correction for a replaced segment, if it is a sane
+/// 1-4 word substitution that actually changed something.
+fn flush_correction<'a>(
+    del: &mut Vec<&'a str>,
+    ins: &mut Vec<&'a str>,
+    out: &mut Vec<(String, String)>,
+) {
+    if !del.is_empty() && !ins.is_empty() && del.len() <= 4 && ins.len() <= 4 {
+        if del.len() == ins.len() {
+            // Equal-length runs align word-by-word, which yields more reusable
+            // single-word corrections (e.g. "teh kat" -> "the cat" becomes two
+            // pairs rather than one phrase).
+            for (d, i) in del.iter().zip(ins.iter()) {
+                push_pair(d, i, out);
+            }
+        } else {
+            // Unequal runs (e.g. "charge bee" -> "ChargeBee") stay as one phrase.
+            let from = del.join(" ");
+            let to = ins.join(" ");
+            push_pair(&from, &to, out);
+        }
+    }
+    del.clear();
+    ins.clear();
+}
+
+/// Pushes a trimmed `(from, to)` pair if it is non-empty and an actual change.
+fn push_pair(from: &str, to: &str, out: &mut Vec<(String, String)>) {
+    let from = trim_phrase_edges(from);
+    let to = trim_phrase_edges(to);
+    if !from.is_empty() && !to.is_empty() && from != to {
+        out.push((from, to));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -548,6 +691,87 @@ mod tests {
         let custom_words = vec!["MacBook Pro".to_string()];
         let result = apply_custom_words(text, &custom_words, 0.5);
         assert!(result.contains("MacBook"));
+    }
+
+    #[test]
+    fn test_apply_learned_corrections_whole_word_only() {
+        let corrections = vec![("kakan".to_string(), "Kakan".to_string())];
+        // Whole word is replaced...
+        assert_eq!(
+            apply_learned_corrections("my name is kakan today", &corrections),
+            "my name is Kakan today"
+        );
+        // ...but a substring inside another word is not.
+        assert_eq!(
+            apply_learned_corrections("kakanpur is a place", &corrections),
+            "kakanpur is a place"
+        );
+    }
+
+    #[test]
+    fn test_apply_learned_corrections_case_sensitive() {
+        let corrections = vec![("teh".to_string(), "the".to_string())];
+        assert_eq!(
+            apply_learned_corrections("teh cat sat", &corrections),
+            "the cat sat"
+        );
+        // Different casing is left untouched (exact, predictable behavior).
+        assert_eq!(
+            apply_learned_corrections("Teh cat sat", &corrections),
+            "Teh cat sat"
+        );
+    }
+
+    #[test]
+    fn test_apply_learned_corrections_phrase() {
+        let corrections = vec![("charge bee".to_string(), "ChargeBee".to_string())];
+        assert_eq!(
+            apply_learned_corrections("we use charge bee daily", &corrections),
+            "we use ChargeBee daily"
+        );
+    }
+
+    #[test]
+    fn test_apply_learned_corrections_empty_is_noop() {
+        assert_eq!(apply_learned_corrections("hello world", &[]), "hello world");
+    }
+
+    #[test]
+    fn test_compute_corrections_single_word() {
+        let pairs = compute_corrections("my name is kakan", "my name is Kakan");
+        assert_eq!(pairs, vec![("kakan".to_string(), "Kakan".to_string())]);
+    }
+
+    #[test]
+    fn test_compute_corrections_trims_punctuation() {
+        let pairs = compute_corrections("i met kakan, yesterday", "i met Kakan, yesterday");
+        assert_eq!(pairs, vec![("kakan".to_string(), "Kakan".to_string())]);
+    }
+
+    #[test]
+    fn test_compute_corrections_ignores_pure_insertion() {
+        // Adding a word with no replacement should not produce a correction.
+        let pairs = compute_corrections("hello world", "hello there world");
+        assert!(pairs.is_empty());
+    }
+
+    #[test]
+    fn test_compute_corrections_ignores_pure_deletion() {
+        let pairs = compute_corrections("hello there world", "hello world");
+        assert!(pairs.is_empty());
+    }
+
+    #[test]
+    fn test_compute_corrections_no_change() {
+        let pairs = compute_corrections("nothing changed here", "nothing changed here");
+        assert!(pairs.is_empty());
+    }
+
+    #[test]
+    fn test_compute_corrections_multiple() {
+        let pairs = compute_corrections("teh kat sat", "the cat sat");
+        assert!(pairs.contains(&("teh".to_string(), "the".to_string())));
+        assert!(pairs.contains(&("kat".to_string(), "cat".to_string())));
     }
 
     #[test]

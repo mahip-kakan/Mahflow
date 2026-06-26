@@ -1,4 +1,6 @@
-use crate::audio_toolkit::{apply_custom_words, filter_transcription_output};
+use crate::audio_toolkit::{
+    apply_custom_words, apply_learned_corrections, filter_transcription_output,
+};
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::model::{EngineType, ModelManager};
 use crate::settings::{
@@ -721,6 +723,15 @@ impl TranscriptionManager {
             &settings.app_language,
             &settings.custom_filler_words,
         );
+
+        // Apply exact word/phrase replacements the user has taught Mahflow by
+        // editing past transcriptions in the History tab.
+        let learned_pairs: Vec<(String, String)> = settings
+            .learned_corrections
+            .iter()
+            .map(|c| (c.from.clone(), c.to.clone()))
+            .collect();
+        let filtered_result = apply_learned_corrections(&filtered_result, &learned_pairs);
 
         let et = std::time::Instant::now();
         let translation_note = if settings.translate_to_english {

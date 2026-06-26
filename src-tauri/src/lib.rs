@@ -13,6 +13,7 @@ mod llm_client;
 mod managers;
 mod overlay;
 pub mod portable;
+mod press_gesture;
 mod settings;
 mod shortcut;
 mod signal_handle;
@@ -20,6 +21,8 @@ mod transcription_coordinator;
 mod tray;
 mod tray_i18n;
 mod utils;
+mod window_glass;
+mod window_open_gesture;
 
 pub use cli::CliArgs;
 #[cfg(debug_assertions)]
@@ -40,7 +43,7 @@ use std::sync::Arc;
 use tauri::image::Image;
 pub use transcription_coordinator::TranscriptionCoordinator;
 
-use tauri::tray::TrayIconBuilder;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Listener, Manager};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
@@ -93,7 +96,7 @@ fn build_console_filter() -> env_filter::Filter {
     builder.build()
 }
 
-fn show_main_window(app: &AppHandle) {
+pub(crate) fn show_main_window(app: &AppHandle) {
     if let Some(main_window) = app.get_webview_window("main") {
         if let Err(e) = main_window.unminimize() {
             log::error!("Failed to unminimize webview window: {}", e);
@@ -211,8 +214,28 @@ fn initialize_core_logic(app_handle: &AppHandle) {
             .unwrap(),
         )
         .tooltip(tray::tray_tooltip())
-        .show_menu_on_left_click(true)
+        // Single click shows the tray menu on Linux only (tray click events are
+        // unavailable there). macOS/Windows: double-click opens settings; use
+        // right-click for the tray menu.
+        .show_menu_on_left_click(cfg!(target_os = "linux"))
         .icon_as_template(true)
+        .on_tray_icon_event(|tray, event| {
+            let app = tray.app_handle();
+            match event {
+                #[cfg(target_os = "windows")]
+                TrayIconEvent::DoubleClick {
+                    button: MouseButton::Left,
+                    ..
+                } => show_main_window(app),
+                #[cfg(not(target_os = "windows"))]
+                TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    ..
+                } => window_open_gesture::try_show_main_window_on_double_click(app),
+                _ => {}
+            }
+        })
         .on_menu_event(|app, event| match event.id.as_ref() {
             "settings" => {
                 show_main_window(app);
@@ -336,6 +359,7 @@ pub fn run(cli_args: CliArgs) {
             shortcut::change_binding,
             shortcut::reset_binding,
             shortcut::change_ptt_setting,
+            shortcut::change_transcribe_activation_setting,
             shortcut::change_audio_feedback_setting,
             shortcut::change_audio_feedback_volume_setting,
             shortcut::change_sound_theme_setting,
@@ -367,7 +391,11 @@ pub fn run(cli_args: CliArgs) {
             shortcut::update_post_process_prompt,
             shortcut::delete_post_process_prompt,
             shortcut::set_post_process_selected_prompt,
+            shortcut::change_theme_setting,
             shortcut::update_custom_words,
+            shortcut::get_learned_corrections,
+            shortcut::add_learned_corrections,
+            shortcut::remove_learned_correction,
             shortcut::suspend_binding,
             shortcut::resume_binding,
             shortcut::change_mute_while_recording_setting,
@@ -433,6 +461,8 @@ pub fn run(cli_args: CliArgs) {
             commands::history::get_audio_file_path,
             commands::history::delete_history_entry,
             commands::history::retry_history_entry_transcription,
+            commands::history::update_history_entry_text,
+            commands::history::get_usage_insights,
             commands::history::update_history_limit,
             commands::history::update_recording_retention_period,
             helpers::clamshell::is_laptop,
@@ -542,7 +572,15 @@ pub fn run(cli_args: CliArgs) {
                 win_builder = win_builder.data_directory(data_dir.join("webview"));
             }
 
-            win_builder.build()?;
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            {
+                win_builder = win_builder.transparent(true);
+            }
+
+            let window = win_builder.build()?;
+
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            window_glass::apply_main_window_glass(&window);
 
             let mut settings = get_settings(&app.handle());
 
@@ -639,7 +677,7 @@ pub fn run(cli_args: CliArgs) {
         .run(|app, event| {
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = &event {
-                show_main_window(app);
+                window_open_gesture::try_show_main_window_on_double_click(app);
             }
             let _ = (app, event); // suppress unused warnings on non-macOS
         });

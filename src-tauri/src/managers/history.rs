@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Datelike, Duration, Local, NaiveDate, Utc};
 use log::{debug, error, info};
 use rusqlite::{params, Connection, OptionalExtension};
 use rusqlite_migration::{Migrations, M};
@@ -37,6 +37,38 @@ static MIGRATIONS: &[M] = &[
 pub struct PaginatedHistory {
     pub entries: Vec<HistoryEntry>,
     pub has_more: bool,
+}
+
+/// One day's worth of dictation activity, used to render the usage heatmap.
+/// `date` is a local-calendar day formatted as `YYYY-MM-DD`.
+#[derive(Clone, Debug, Serialize, Deserialize, Type)]
+pub struct DayActivity {
+    pub date: String,
+    pub words: u32,
+    pub recordings: u32,
+}
+
+/// Aggregated, privacy-preserving usage statistics computed entirely from the
+/// local transcription history database. Nothing here leaves the machine.
+#[derive(Clone, Debug, Serialize, Deserialize, Type)]
+pub struct UsageInsights {
+    pub total_words: u64,
+    pub total_recordings: u64,
+    pub words_this_month: u64,
+    pub words_prev_month: u64,
+    /// Percentage change in words vs the previous calendar month. `None` when
+    /// the previous month had no dictation (so a percentage is undefined).
+    pub month_change_pct: Option<f64>,
+    pub words_this_week: u64,
+    pub avg_words_per_recording: u32,
+    pub current_streak_days: u32,
+    pub longest_streak_days: u32,
+    pub active_days: u32,
+    pub first_recording_ts: Option<i64>,
+    /// Per-day activity for the trailing heatmap window, oldest day first.
+    pub daily_activity: Vec<DayActivity>,
+    pub dictionary_words: u32,
+    pub learned_corrections: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type, tauri_specta::Event)]
@@ -638,6 +670,192 @@ impl HistoryManager {
         Ok(())
     }
 
+    /// Aggregate the entire local history into usage insights.
+    ///
+    /// This method performs only I/O — reading rows and settings — and defers
+    /// all arithmetic to [`Self::aggregate_usage_insights`], a pure function
+    /// that is unit-tested in isolation. We count words in Rust rather than SQL
+    /// because correct word counting needs Unicode-aware whitespace splitting
+    /// that SQLite cannot do, and the row count is bounded by retention so a
+    /// single pass is cheap.
+    pub fn compute_usage_insights(&self) -> Result<UsageInsights> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn.prepare(
+            "SELECT timestamp, transcription_text, post_processed_text
+             FROM transcription_history",
+        )?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                ))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        let settings = crate::settings::get_settings(&self.app_handle);
+
+        Ok(Self::aggregate_usage_insights(
+            rows,
+            Local::now().date_naive(),
+            settings.custom_words.len() as u32,
+            settings.learned_corrections.len() as u32,
+        ))
+    }
+
+    /// Pure aggregation of raw history rows into [`UsageInsights`]. Free of I/O
+    /// and wall-clock access (`today` is injected by the caller), so it can be
+    /// tested deterministically regardless of the machine's timezone.
+    fn aggregate_usage_insights(
+        rows: Vec<(i64, String, Option<String>)>,
+        today: NaiveDate,
+        dictionary_words: u32,
+        learned_corrections: u32,
+    ) -> UsageInsights {
+        use std::collections::{HashMap, HashSet};
+
+        let cur_year = today.year();
+        let cur_month = today.month();
+        let (prev_year, prev_month) = if cur_month == 1 {
+            (cur_year - 1, 12)
+        } else {
+            (cur_year, cur_month - 1)
+        };
+        // "This week" is a rolling 7-day window ending today (inclusive).
+        let week_start = today - Duration::days(6);
+
+        let mut total_words: u64 = 0;
+        let mut total_recordings: u64 = 0;
+        let mut words_this_month: u64 = 0;
+        let mut words_prev_month: u64 = 0;
+        let mut words_this_week: u64 = 0;
+        let mut first_ts: Option<i64> = None;
+        let mut by_day: HashMap<NaiveDate, (u64, u32)> = HashMap::new();
+
+        for (ts, text, processed) in rows {
+            // Prefer the post-processed (cleaned) text when present, since that
+            // is what actually got pasted; otherwise fall back to the raw text.
+            let chosen = match processed {
+                Some(p) if !p.trim().is_empty() => p,
+                _ => text,
+            };
+            let words = chosen.split_whitespace().count() as u64;
+
+            total_recordings += 1;
+            total_words += words;
+            first_ts = Some(match first_ts {
+                Some(f) => f.min(ts),
+                None => ts,
+            });
+
+            let date = match DateTime::from_timestamp(ts, 0) {
+                Some(dt) => dt.with_timezone(&Local).date_naive(),
+                None => continue,
+            };
+
+            let bucket = by_day.entry(date).or_insert((0, 0));
+            bucket.0 += words;
+            bucket.1 += 1;
+
+            if date.year() == cur_year && date.month() == cur_month {
+                words_this_month += words;
+            } else if date.year() == prev_year && date.month() == prev_month {
+                words_prev_month += words;
+            }
+            if date >= week_start && date <= today {
+                words_this_week += words;
+            }
+        }
+
+        let month_change_pct = if words_prev_month > 0 {
+            Some(
+                (words_this_month as f64 - words_prev_month as f64) / words_prev_month as f64
+                    * 100.0,
+            )
+        } else {
+            None
+        };
+
+        let avg_words_per_recording = if total_recordings > 0 {
+            (total_words / total_recordings) as u32
+        } else {
+            0
+        };
+
+        // Heatmap window: a trailing 26 weeks (182 days), oldest day first so
+        // the frontend can chunk it into week-columns left-to-right.
+        const HEATMAP_DAYS: i64 = 182;
+        let start_date = today - Duration::days(HEATMAP_DAYS - 1);
+        let mut daily_activity = Vec::with_capacity(HEATMAP_DAYS as usize);
+        let mut cursor = start_date;
+        while cursor <= today {
+            let (w, c) = by_day.get(&cursor).copied().unwrap_or((0, 0));
+            daily_activity.push(DayActivity {
+                date: cursor.format("%Y-%m-%d").to_string(),
+                words: w as u32,
+                recordings: c,
+            });
+            cursor += Duration::days(1);
+        }
+
+        // Longest streak across all of history: scan active days in order and
+        // count the longest run of consecutive calendar days.
+        let mut active_dates: Vec<NaiveDate> = by_day.keys().copied().collect();
+        active_dates.sort_unstable();
+        let active_days = active_dates.len() as u32;
+
+        let mut longest_streak_days = 0u32;
+        let mut run = 0u32;
+        let mut prev: Option<NaiveDate> = None;
+        for &day in &active_dates {
+            run = match prev {
+                Some(p) if day == p + Duration::days(1) => run + 1,
+                _ => 1,
+            };
+            longest_streak_days = longest_streak_days.max(run);
+            prev = Some(day);
+        }
+
+        // Current streak: consecutive active days ending today, allowing
+        // yesterday as a one-day grace so the streak does not "reset" before
+        // the user has had a chance to dictate today.
+        let active_set: HashSet<NaiveDate> = active_dates.iter().copied().collect();
+        let mut anchor = if active_set.contains(&today) {
+            Some(today)
+        } else if active_set.contains(&(today - Duration::days(1))) {
+            Some(today - Duration::days(1))
+        } else {
+            None
+        };
+        let mut current_streak_days = 0u32;
+        while let Some(day) = anchor {
+            if active_set.contains(&day) {
+                current_streak_days += 1;
+                anchor = Some(day - Duration::days(1));
+            } else {
+                break;
+            }
+        }
+
+        UsageInsights {
+            total_words,
+            total_recordings,
+            words_this_month,
+            words_prev_month,
+            month_change_pct,
+            words_this_week,
+            avg_words_per_recording,
+            current_streak_days,
+            longest_streak_days,
+            active_days,
+            first_recording_ts: first_ts,
+            daily_activity,
+            dictionary_words,
+            learned_corrections,
+        }
+    }
+
     fn format_timestamp_title(&self, timestamp: i64) -> String {
         if let Some(utc_datetime) = DateTime::from_timestamp(timestamp, 0) {
             // Convert UTC to local timezone
@@ -733,5 +951,153 @@ mod tests {
 
         assert_eq!(entry.timestamp, 100);
         assert_eq!(entry.transcription_text, "completed");
+    }
+
+    // --- Usage insights aggregation -------------------------------------
+
+    fn day(date: &str) -> NaiveDate {
+        NaiveDate::parse_from_str(date, "%Y-%m-%d").expect("valid date")
+    }
+
+    /// A UTC timestamp that lands on `date` at noon local time. Noon keeps us
+    /// clear of DST transitions, so the row buckets to the expected local day
+    /// no matter what timezone the test runs in.
+    fn ts_for_local_date(date: NaiveDate) -> i64 {
+        use chrono::TimeZone;
+        Local
+            .from_local_datetime(&date.and_hms_opt(12, 0, 0).unwrap())
+            .single()
+            .expect("unambiguous local datetime")
+            .timestamp()
+    }
+
+    fn row(date: NaiveDate, text: &str, processed: Option<&str>) -> (i64, String, Option<String>) {
+        (
+            ts_for_local_date(date),
+            text.to_string(),
+            processed.map(|s| s.to_string()),
+        )
+    }
+
+    #[test]
+    fn insights_empty_history() {
+        let insights = HistoryManager::aggregate_usage_insights(vec![], day("2026-06-26"), 0, 0);
+        assert_eq!(insights.total_words, 0);
+        assert_eq!(insights.total_recordings, 0);
+        assert_eq!(insights.current_streak_days, 0);
+        assert_eq!(insights.longest_streak_days, 0);
+        assert_eq!(insights.active_days, 0);
+        assert_eq!(insights.month_change_pct, None);
+        assert_eq!(insights.daily_activity.len(), 182);
+        assert!(insights.first_recording_ts.is_none());
+    }
+
+    #[test]
+    fn insights_counts_words_and_prefers_processed_text() {
+        let today = day("2026-06-26");
+        let rows = vec![
+            row(today, "hello world", None),                // 2 words (raw)
+            row(today, "raw text here", Some("two words")), // 2 words (prefers processed)
+            row(today, "  ", Some("   ")),                  // blank processed -> falls back to raw -> 0
+        ];
+        let insights = HistoryManager::aggregate_usage_insights(rows, today, 3, 5);
+        assert_eq!(insights.total_recordings, 3);
+        assert_eq!(insights.total_words, 4);
+        assert_eq!(insights.avg_words_per_recording, 1); // 4 / 3 == 1 (integer div)
+        assert_eq!(insights.dictionary_words, 3);
+        assert_eq!(insights.learned_corrections, 5);
+    }
+
+    #[test]
+    fn insights_month_change_percentage() {
+        let today = day("2026-06-26");
+        let rows = vec![
+            row(day("2026-05-10"), "one two three four", None), // 4 words, previous month
+            row(day("2026-06-01"), "a b c d e f", None),        // 6 words, this month
+        ];
+        let insights = HistoryManager::aggregate_usage_insights(rows, today, 0, 0);
+        assert_eq!(insights.words_prev_month, 4);
+        assert_eq!(insights.words_this_month, 6);
+        assert_eq!(insights.month_change_pct, Some(50.0)); // (6 - 4) / 4 * 100
+    }
+
+    #[test]
+    fn insights_month_change_none_without_baseline() {
+        let today = day("2026-06-26");
+        let rows = vec![row(day("2026-06-02"), "only this month words here", None)];
+        let insights = HistoryManager::aggregate_usage_insights(rows, today, 0, 0);
+        assert_eq!(insights.words_prev_month, 0);
+        assert_eq!(insights.month_change_pct, None);
+    }
+
+    #[test]
+    fn insights_month_rollover_to_previous_year() {
+        let today = day("2026-01-15");
+        let rows = vec![
+            row(day("2025-12-20"), "december words counted right here", None), // Dec 2025 = prev month
+            row(day("2026-01-05"), "january one", None),
+        ];
+        let insights = HistoryManager::aggregate_usage_insights(rows, today, 0, 0);
+        assert_eq!(insights.words_prev_month, 5);
+        assert_eq!(insights.words_this_month, 2);
+    }
+
+    #[test]
+    fn insights_streaks_and_week() {
+        let today = day("2026-06-26");
+        let rows = vec![
+            // Current run ending today: 24, 25, 26.
+            row(day("2026-06-26"), "w", None),
+            row(day("2026-06-25"), "w", None),
+            row(day("2026-06-24"), "w", None),
+            // Earlier, longer run: 01, 02, 03, 04.
+            row(day("2026-06-01"), "w", None),
+            row(day("2026-06-02"), "w", None),
+            row(day("2026-06-03"), "w", None),
+            row(day("2026-06-04"), "w", None),
+        ];
+        let insights = HistoryManager::aggregate_usage_insights(rows, today, 0, 0);
+        assert_eq!(insights.current_streak_days, 3);
+        assert_eq!(insights.longest_streak_days, 4);
+        assert_eq!(insights.active_days, 7);
+        // Rolling 7-day window (Jun 20..26): only 24, 25, 26 are active.
+        assert_eq!(insights.words_this_week, 3);
+    }
+
+    #[test]
+    fn insights_current_streak_grace_for_yesterday() {
+        let today = day("2026-06-26");
+        let rows = vec![
+            row(day("2026-06-25"), "w", None),
+            row(day("2026-06-24"), "w", None),
+        ];
+        let insights = HistoryManager::aggregate_usage_insights(rows, today, 0, 0);
+        // No activity today, but yesterday is active -> streak counts 25 and 24.
+        assert_eq!(insights.current_streak_days, 2);
+    }
+
+    #[test]
+    fn insights_current_streak_zero_when_stale() {
+        let today = day("2026-06-26");
+        let rows = vec![row(day("2026-06-20"), "w", None)];
+        let insights = HistoryManager::aggregate_usage_insights(rows, today, 0, 0);
+        assert_eq!(insights.current_streak_days, 0);
+    }
+
+    #[test]
+    fn insights_heatmap_window_bounds() {
+        let today = day("2026-06-26");
+        let rows = vec![row(today, "one two three", None)];
+        let insights = HistoryManager::aggregate_usage_insights(rows, today, 0, 0);
+
+        assert_eq!(insights.daily_activity.len(), 182);
+
+        let last = insights.daily_activity.last().unwrap();
+        assert_eq!(last.date, "2026-06-26");
+        assert_eq!(last.words, 3);
+        assert_eq!(last.recordings, 1);
+
+        // 182-day inclusive window => first day is today minus 181 days.
+        assert_eq!(insights.daily_activity[0].date, "2025-12-27");
     }
 }

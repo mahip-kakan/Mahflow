@@ -1,5 +1,7 @@
 use crate::actions::ACTION_MAP;
 use crate::managers::audio::AudioRecordingManager;
+use crate::press_gesture;
+use crate::settings::{get_settings, TranscribeActivation};
 use log::{debug, error, warn};
 use std::sync::mpsc::{self, Sender};
 use std::sync::Arc;
@@ -67,6 +69,19 @@ impl TranscriptionCoordinator {
                                     continue;
                                 }
                                 last_press = Some(now);
+
+                                if !push_to_talk {
+                                    let activation =
+                                        get_settings(&app).transcribe_activation;
+                                    if activation == TranscribeActivation::DoublePress
+                                        && !press_gesture::register_transcribe_activation_press()
+                                    {
+                                        debug!(
+                                            "Waiting for second press to activate '{binding_id}'"
+                                        );
+                                        continue;
+                                    }
+                                }
                             }
 
                             if push_to_talk {

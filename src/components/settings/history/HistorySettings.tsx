@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { readFile } from "@tauri-apps/plugin-fs";
-import { Check, Copy, FolderOpen, RotateCcw, Star, Trash2 } from "lucide-react";
+import { Check, Copy, FolderOpen, Pencil, RotateCcw, Star, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -9,11 +9,13 @@ import {
   events,
   type HistoryEntry,
   type HistoryUpdatePayload,
+  type LearnedCorrection,
 } from "@/bindings";
 import { useOsType } from "@/hooks/useOsType";
 import { formatDateTime } from "@/utils/dateFormat";
 import { AudioPlayer } from "../../ui/AudioPlayer";
 import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
 
 const IconButton: React.FC<{
   onClick: () => void;
@@ -312,6 +314,12 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   const { t, i18n } = useTranslation();
   const [showCopied, setShowCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.transcription_text);
+  const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState<LearnedCorrection[] | null>(
+    null,
+  );
 
   const hasTranscription = entry.transcription_text.trim().length > 0;
 
@@ -319,6 +327,43 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
     () => getAudioUrl(entry.file_name),
     [getAudioUrl, entry.file_name],
   );
+
+  const startEditing = () => {
+    setDraft(entry.transcription_text);
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+    setDraft(entry.transcription_text);
+  };
+
+  const saveEdit = async () => {
+    const corrected = draft.trim();
+    if (!corrected || corrected === entry.transcription_text.trim()) {
+      setEditing(false);
+      return;
+    }
+    try {
+      setSaving(true);
+      const result = await commands.updateHistoryEntryText(entry.id, corrected);
+      setEditing(false);
+      if (result.status === "ok") {
+        if (result.data.length > 0) {
+          setSuggestions(result.data);
+        } else {
+          toast.success(t("settings.history.edit.saved"));
+        }
+      } else {
+        toast.error(t("settings.history.edit.saveError"));
+      }
+    } catch (error) {
+      console.error("Failed to save transcription edit:", error);
+      toast.error(t("settings.history.edit.saveError"));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCopyText = () => {
     if (!hasTranscription) {
@@ -370,6 +415,14 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             )}
           </IconButton>
           <IconButton
+            onClick={startEditing}
+            disabled={!hasTranscription || retrying || editing}
+            active={editing}
+            title={t("settings.history.edit.edit")}
+          >
+            <Pencil width={16} height={16} />
+          </IconButton>
+          <IconButton
             onClick={onToggleSaved}
             disabled={retrying}
             active={entry.saved}
@@ -410,36 +463,176 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         </div>
       </div>
 
-      <p
-        className={`italic text-sm pb-2 ${
-          retrying
-            ? ""
-            : hasTranscription
-              ? "text-text/90 select-text cursor-text whitespace-pre-wrap break-words"
-              : "text-text/40"
-        }`}
-        style={
-          retrying
-            ? { animation: "transcribe-pulse 3s ease-in-out infinite" }
-            : undefined
-        }
-      >
-        {retrying && (
-          <style>{`
+      {editing ? (
+        <div className="flex flex-col gap-2 pb-2">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={3}
+            autoFocus
+            disabled={saving}
+            className="w-full text-sm rounded-lg border border-mid-gray/30 bg-background p-2 resize-y focus:outline-none focus:border-logo-primary/60 whitespace-pre-wrap break-words"
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={cancelEditing}
+              disabled={saving}
+            >
+              {t("settings.history.edit.cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={saveEdit}
+              disabled={saving || !draft.trim()}
+            >
+              {t("settings.history.edit.save")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p
+          className={`italic text-sm pb-2 ${
+            retrying
+              ? ""
+              : hasTranscription
+                ? "text-text/90 select-text cursor-text whitespace-pre-wrap break-words"
+                : "text-text/40"
+          }`}
+          style={
+            retrying
+              ? { animation: "transcribe-pulse 3s ease-in-out infinite" }
+              : undefined
+          }
+        >
+          {retrying && (
+            <style>{`
             @keyframes transcribe-pulse {
               0%, 100% { color: color-mix(in srgb, var(--color-text) 40%, transparent); }
               50% { color: color-mix(in srgb, var(--color-text) 90%, transparent); }
             }
           `}</style>
-        )}
-        {retrying
-          ? t("settings.history.transcribing")
-          : hasTranscription
-            ? entry.transcription_text
-            : t("settings.history.transcriptionFailed")}
-      </p>
+          )}
+          {retrying
+            ? t("settings.history.transcribing")
+            : hasTranscription
+              ? entry.transcription_text
+              : t("settings.history.transcriptionFailed")}
+        </p>
+      )}
+
+      {suggestions && suggestions.length > 0 && (
+        <LearnedCorrectionsConfirm
+          suggestions={suggestions}
+          onDone={() => setSuggestions(null)}
+        />
+      )}
 
       <AudioPlayer onLoadRequest={handleLoadAudio} className="w-full" />
+    </div>
+  );
+};
+
+interface LearnedCorrectionsConfirmProps {
+  suggestions: LearnedCorrection[];
+  onDone: () => void;
+}
+
+const LearnedCorrectionsConfirm: React.FC<LearnedCorrectionsConfirmProps> = ({
+  suggestions,
+  onDone,
+}) => {
+  const { t } = useTranslation();
+  const [rows, setRows] = useState(
+    suggestions.map((s) => ({ from: s.from, to: s.to, enabled: true })),
+  );
+  const [saving, setSaving] = useState(false);
+
+  const toggle = (index: number) =>
+    setRows((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, enabled: !r.enabled } : r)),
+    );
+
+  const editTo = (index: number, value: string) =>
+    setRows((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, to: value } : r)),
+    );
+
+  const confirm = async () => {
+    const chosen = rows
+      .filter((r) => r.enabled && r.to.trim() && r.to.trim() !== r.from)
+      .map((r) => ({ from: r.from, to: r.to.trim() }));
+
+    if (chosen.length === 0) {
+      onDone();
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const result = await commands.addLearnedCorrections(chosen);
+      if (result.status === "ok") {
+        toast.success(
+          t("settings.history.learn.added", { count: chosen.length }),
+        );
+      } else {
+        toast.error(t("settings.history.learn.addError"));
+      }
+    } catch (error) {
+      console.error("Failed to add learned corrections:", error);
+      toast.error(t("settings.history.learn.addError"));
+    } finally {
+      setSaving(false);
+      onDone();
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-logo-primary/30 bg-logo-primary/5 p-3 flex flex-col gap-2">
+      <p className="text-sm font-medium">{t("settings.history.learn.title")}</p>
+      <p className="text-xs text-text/60">
+        {t("settings.history.learn.description")}
+      </p>
+      <div className="flex flex-col gap-1.5">
+        {rows.map((row, i) => (
+          <label
+            key={`${row.from}-${i}`}
+            className="flex items-center gap-2 text-sm flex-wrap"
+          >
+            <input
+              type="checkbox"
+              checked={row.enabled}
+              onChange={() => toggle(i)}
+              className="accent-logo-primary"
+              disabled={saving}
+            />
+            <span className="line-through text-text/50">{row.from}</span>
+            <span className="text-text/40">→</span>
+            <Input
+              variant="compact"
+              className="max-w-40"
+              value={row.to}
+              onChange={(e) => editTo(i, e.target.value)}
+              disabled={saving || !row.enabled}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onDone}
+          disabled={saving}
+        >
+          {t("settings.history.learn.dismiss")}
+        </Button>
+        <Button variant="primary" size="sm" onClick={confirm} disabled={saving}>
+          {t("settings.history.learn.add")}
+        </Button>
+      </div>
     </div>
   );
 };

@@ -6,6 +6,11 @@ import App from "./App";
 // Set platform before render so CSS can scope per-platform (e.g. scrollbar styles)
 document.documentElement.dataset.platform = platform();
 
+// Native transparent window on macOS/Windows — enables desktop blur + CSS glass.
+if (platform() !== "linux") {
+  document.documentElement.dataset.glassWindow = "true";
+}
+
 // Initialize i18n
 import "./i18n";
 

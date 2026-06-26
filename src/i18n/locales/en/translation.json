@@ -14,6 +14,7 @@
     "advanced": "Advanced",
     "postProcessing": "Post Process",
     "history": "History",
+    "insights": "Insights",
     "debug": "Debug",
     "about": "About"
   },
@@ -155,6 +156,19 @@
       "title": "{{model}} Settings",
       "noSettingsNeeded": "This model works automatically with no configuration needed."
     },
+    "appearance": {
+      "title": "Appearance",
+      "theme": {
+        "title": "Theme",
+        "description": "Choose how Mahflow looks. 'System' follows your macOS appearance, 'Light' and 'Dark' force a palette, and 'Mah' is a warm, airy light theme with a teal accent.",
+        "options": {
+          "system": "System",
+          "light": "Light",
+          "dark": "Dark",
+          "mah": "Mah"
+        }
+      }
+    },
     "general": {
       "title": "General",
       "shortcut": {
@@ -195,6 +209,14 @@
       "pushToTalk": {
         "label": "Push To Talk",
         "description": "Hold to record, release to stop"
+      },
+      "transcribeActivation": {
+        "title": "Shortcut activation",
+        "description": "Choose whether one press or two quick presses of your transcribe shortcut starts and stops recording. Only applies when Push To Talk is off.",
+        "options": {
+          "singlePress": "Single press",
+          "doublePress": "Double press"
+        }
       }
     },
     "models": {
@@ -360,6 +382,13 @@
         "add": "Add",
         "remove": "Remove {{word}}",
         "duplicate": "\"{{word}}\" already exists"
+      },
+      "learnedCorrections": {
+        "title": "Learned Corrections",
+        "description": "Exact word and phrase replacements Mahflow learned from your edits in the History tab. They are applied automatically to future transcriptions.",
+        "count": "{{count}} learned",
+        "remove": "Forget \"{{from}}\" → \"{{to}}\"",
+        "removeError": "Failed to remove correction. Please try again."
       }
     },
     "postProcessing": {
@@ -422,6 +451,35 @@
         "createFirst": "Click 'Create New Prompt' above to create your first post-processing prompt."
       }
     },
+    "insights": {
+      "title": "Insights",
+      "subtitle": "Your dictation activity, computed privately on this device.",
+      "loading": "Loading your insights...",
+      "error": "Could not load insights. Please try again.",
+      "empty": {
+        "title": "No insights yet",
+        "description": "Once you start dictating, your usage stats and activity will appear here."
+      },
+      "totalWords": "Total words dictated",
+      "thisMonthWords": "{{count}} words this month",
+      "changeThisMonth": "{{pct}}% this month",
+      "totalRecordings": "Total recordings",
+      "avgWords": "~{{count}} words per recording",
+      "currentStreak": "Current streak",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "longestStreak": "Longest: {{count}} days",
+      "activity": "Daily activity",
+      "activeDays": "{{count}} active days",
+      "wordsLabel": "words",
+      "less": "Less",
+      "more": "More",
+      "dictionaryWords": "Dictionary words",
+      "dictionaryHint": "Custom words biasing transcription",
+      "learnedCorrections": "Learned corrections",
+      "learnedHint": "Auto-fixes from your edits",
+      "privacyNote": "All stats are calculated locally from your transcription history and never leave your device."
+    },
     "history": {
       "title": "History",
       "openFolder": "Open Recordings Folder",
@@ -435,7 +493,22 @@
       "retranscribe": "Re-transcribe",
       "retranscribeError": "Failed to re-transcribe. Please try again.",
       "transcribing": "Transcribing...",
-      "transcriptionFailed": "Transcription failed. You can re-transcribe using the retry icon."
+      "transcriptionFailed": "Transcription failed. You can re-transcribe using the retry icon.",
+      "edit": {
+        "edit": "Edit transcription",
+        "save": "Save",
+        "cancel": "Cancel",
+        "saved": "Transcription updated",
+        "saveError": "Failed to save changes. Please try again."
+      },
+      "learn": {
+        "title": "Learn from your edits?",
+        "description": "Add these exact corrections to your personal dictionary so future transcriptions are fixed automatically. You can edit the result or untick any you don't want.",
+        "add": "Add to dictionary",
+        "dismiss": "Not now",
+        "added": "Added {{count}} correction(s) to your dictionary",
+        "addError": "Failed to save corrections. Please try again."
+      }
     },
     "debug": {
       "title": "Debug",

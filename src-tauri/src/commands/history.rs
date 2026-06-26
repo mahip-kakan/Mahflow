@@ -1,6 +1,6 @@
 use crate::actions::process_transcription_output;
 use crate::managers::{
-    history::{HistoryManager, PaginatedHistory},
+    history::{HistoryManager, PaginatedHistory, UsageInsights},
     transcription::TranscriptionManager,
 };
 use std::sync::Arc;
@@ -103,6 +103,62 @@ pub async fn retry_history_entry_transcription(
             processed.post_process_prompt,
         )
         .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// Save a user's manual edit of a past transcription and return the set of
+/// suggested learned corrections (exact word/phrase changes) derived from the
+/// diff. The suggestions are NOT persisted to the dictionary here — the
+/// frontend confirms them first via `add_learned_corrections`.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_history_entry_text(
+    app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+    id: i64,
+    corrected_text: String,
+) -> Result<Vec<crate::settings::LearnedCorrection>, String> {
+    let entry = history_manager
+        .get_entry_by_id(id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("History entry {} not found", id))?;
+
+    let original = entry.transcription_text.clone();
+    let corrected_text = corrected_text.trim().to_string();
+
+    // Persist the edited transcription, keeping any existing post-processed text.
+    history_manager
+        .update_transcription(
+            id,
+            corrected_text.clone(),
+            entry.post_processed_text.clone(),
+            entry.post_process_prompt.clone(),
+        )
+        .map_err(|e| e.to_string())?;
+
+    // Diff original vs corrected into suggested learned corrections, excluding
+    // ones the user has already taught Mahflow.
+    let existing = crate::settings::get_settings(&app).learned_corrections;
+    let suggestions = crate::audio_toolkit::compute_corrections(&original, &corrected_text)
+        .into_iter()
+        .map(|(from, to)| crate::settings::LearnedCorrection { from, to })
+        .filter(|c| !existing.contains(c))
+        .collect::<Vec<_>>();
+
+    Ok(suggestions)
+}
+
+/// Aggregate local transcription history into usage insights for the
+/// "Insights" dashboard. All computation stays on-device.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_usage_insights(
+    _app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+) -> Result<UsageInsights, String> {
+    history_manager
+        .compute_usage_insights()
         .map_err(|e| e.to_string())
 }
 

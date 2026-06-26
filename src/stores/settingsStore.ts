@@ -89,6 +89,8 @@ const settingUpdaters: {
   update_checks_enabled: (value) =>
     commands.changeUpdateChecksSetting(value as boolean),
   push_to_talk: (value) => commands.changePttSetting(value as boolean),
+  transcribe_activation: (value) =>
+    commands.changeTranscribeActivationSetting(value as string),
   selected_microphone: (value) =>
     commands.setSelectedMicrophone(
       (value as string) === "Default" || value === null
@@ -113,6 +115,7 @@ const settingUpdaters: {
     commands.changeSelectedLanguageSetting(value as string),
   overlay_position: (value) =>
     commands.changeOverlayPositionSetting(value as string),
+  theme: (value) => commands.changeThemeSetting(value as string),
   debug_mode: (value) => commands.changeDebugModeSetting(value as boolean),
   custom_words: (value) => commands.updateCustomWords(value as string[]),
   word_correction_threshold: (value) =>

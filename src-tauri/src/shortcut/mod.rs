@@ -23,7 +23,7 @@ use tauri_plugin_autostart::ManagerExt;
 use crate::settings::APPLE_INTELLIGENCE_DEFAULT_MODEL_ID;
 use crate::settings::{
     self, get_settings, AutoSubmitKey, ClipboardHandling, KeyboardImplementation, LLMPrompt,
-    OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme, TypingTool,
+    OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme, Theme, TypingTool,
     APPLE_INTELLIGENCE_PROVIDER_ID,
 };
 use crate::tray;
@@ -482,6 +482,28 @@ pub fn change_ptt_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_transcribe_activation_setting(
+    app: AppHandle,
+    activation: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.transcribe_activation = match activation.as_str() {
+        "single_press" => settings::TranscribeActivation::SinglePress,
+        "double_press" => settings::TranscribeActivation::DoublePress,
+        other => {
+            warn!(
+                "Invalid transcribe activation '{}', defaulting to single_press",
+                other
+            );
+            settings::TranscribeActivation::SinglePress
+        }
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_audio_feedback_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.audio_feedback = enabled;
@@ -557,6 +579,25 @@ pub fn change_overlay_position_setting(app: AppHandle, position: String) -> Resu
     // Update overlay position without recreating window
     crate::utils::update_overlay_position(&app);
 
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_theme_setting(app: AppHandle, theme: String) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    let parsed = match theme.as_str() {
+        "system" => Theme::System,
+        "light" => Theme::Light,
+        "dark" => Theme::Dark,
+        "mah" | "wispr" => Theme::Mah,
+        other => {
+            warn!("Invalid theme '{}', defaulting to system", other);
+            Theme::System
+        }
+    };
+    settings.theme = parsed;
+    settings::write_settings(&app, settings);
     Ok(())
 }
 
@@ -652,6 +693,50 @@ pub fn change_update_checks_setting(app: AppHandle, enabled: bool) -> Result<(),
 pub fn update_custom_words(app: AppHandle, words: Vec<String>) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.custom_words = words;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+/// Return the user's learned corrections (exact `from` -> `to` replacements).
+#[tauri::command]
+#[specta::specta]
+pub fn get_learned_corrections(app: AppHandle) -> Vec<crate::settings::LearnedCorrection> {
+    settings::get_settings(&app).learned_corrections
+}
+
+/// Append confirmed learned corrections to the personal dictionary, skipping
+/// empties, no-ops, and duplicates.
+#[tauri::command]
+#[specta::specta]
+pub fn add_learned_corrections(
+    app: AppHandle,
+    corrections: Vec<crate::settings::LearnedCorrection>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    for c in corrections {
+        if c.from.is_empty() || c.from == c.to {
+            continue;
+        }
+        if !settings.learned_corrections.contains(&c) {
+            settings.learned_corrections.push(c);
+        }
+    }
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+/// Remove a single learned correction matching both `from` and `to`.
+#[tauri::command]
+#[specta::specta]
+pub fn remove_learned_correction(
+    app: AppHandle,
+    from: String,
+    to: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings
+        .learned_corrections
+        .retain(|c| !(c.from == from && c.to == to));
     settings::write_settings(&app, settings);
     Ok(())
 }

@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Mic, AudioLines, Loader2, X } from "lucide-react";
 import "./RecordingOverlay.css";
@@ -44,19 +44,38 @@ const RecordingOverlay: React.FC = () => {
   const [partialText, setPartialText] = useState<string>("");
   const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
   const tickerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [isCompactLiveCard, setIsCompactLiveCard] = useState(true);
   const direction = getLanguageDirection(i18n.language);
+
+  const isLiveCard = state === "recording" && !!partialText;
+
+  // Single wrapped line → compact pill; multiple lines or scroll → taller card.
+  useLayoutEffect(() => {
+    if (!isLiveCard) {
+      setIsCompactLiveCard(true);
+      return;
+    }
+    const outer = tickerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    const lineHeight = parseFloat(getComputedStyle(outer).lineHeight) || 21;
+    const singleLineMax = lineHeight * 1.55;
+    setIsCompactLiveCard(outer.scrollHeight <= singleLineMax);
+  }, [partialText, isLiveCard]);
 
   // Keep the newest line visible: whenever the live text grows, glide the
   // vertical scroll to the bottom (the words just spoken). Older lines scroll
   // up and fade under the top mask — the "Spotify lyrics" feel.
   useEffect(() => {
     const el = tickerRef.current;
-    if (!el) return;
+    if (!el || isCompactLiveCard) return;
     const id = requestAnimationFrame(() => {
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     });
     return () => cancelAnimationFrame(id);
-  }, [partialText]);
+  }, [partialText, isCompactLiveCard]);
 
   useEffect(() => {
     const setupEventListeners = async () => {
@@ -137,14 +156,16 @@ const RecordingOverlay: React.FC = () => {
 
   // Live "caption card" mode: while recording with live-preview text, the pill
   // expands into a multi-line paragraph card anchored to the bottom.
-  const isLiveCard = state === "recording" && !!partialText;
+  const liveCardClass = isLiveCard
+    ? isCompactLiveCard
+      ? "is-live-card is-compact"
+      : "is-live-card is-expanded"
+    : "";
 
   return (
     <div className="overlay-root" dir={direction}>
       <div
-        className={`recording-overlay ${isVisible ? "fade-in" : ""} ${
-          isLiveCard ? "is-live-card" : ""
-        }`}
+        className={`recording-overlay ${isVisible ? "fade-in" : ""} ${liveCardClass}`}
         data-state={state}
       >
         <div className="overlay-left">{getIcon()}</div>
@@ -155,11 +176,13 @@ const RecordingOverlay: React.FC = () => {
               const { history, current } = splitActiveSentence(partialText);
               return (
                 <div
-                  className="live-paragraph"
+                  className={`live-paragraph ${
+                    isCompactLiveCard ? "is-compact" : "is-scrollable"
+                  }`}
                   ref={tickerRef}
                   title={partialText}
                 >
-                  <div className="live-paragraph-inner">
+                  <div className="live-paragraph-inner" ref={innerRef}>
                     {history && <span className="lp-history">{history}</span>}
                     <span className="lp-current">{current}</span>
                   </div>

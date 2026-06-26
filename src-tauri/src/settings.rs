@@ -10,6 +10,15 @@ use tauri_plugin_store::StoreExt;
 pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
 
+/// A single learned correction captured when the user edits a past
+/// transcription in the History tab. It is applied as an exact, whole-word
+/// replacement (`from` -> `to`) to the output of future transcriptions.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type)]
+pub struct LearnedCorrection {
+    pub from: String,
+    pub to: String,
+}
+
 #[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {
@@ -112,6 +121,29 @@ pub enum OverlayPosition {
     None,
     Top,
     Bottom,
+}
+
+/// Visual theme for the main app window. `System` follows the OS appearance;
+/// `Light`/`Dark` force the corresponding palette; `Mah` is a warm, airy
+/// light palette with a teal accent. The frontend maps these to a
+/// `data-theme` attribute and CSS custom properties.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TranscribeActivation {
+    #[default]
+    SinglePress,
+    DoublePress,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    System,
+    Light,
+    Dark,
+    /// Warm linen + teal accent theme. Deserializes legacy `"wispr"` saves.
+    #[serde(alias = "wispr")]
+    Mah,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
@@ -338,6 +370,8 @@ impl std::ops::DerefMut for SecretMap {
 pub struct AppSettings {
     pub bindings: HashMap<String, ShortcutBinding>,
     pub push_to_talk: bool,
+    #[serde(default)]
+    pub transcribe_activation: TranscribeActivation,
     pub audio_feedback: bool,
     #[serde(default = "default_audio_feedback_volume")]
     pub audio_feedback_volume: f32,
@@ -365,12 +399,16 @@ pub struct AppSettings {
     pub selected_language: String,
     #[serde(default = "default_overlay_position")]
     pub overlay_position: OverlayPosition,
+    #[serde(default = "default_theme")]
+    pub theme: Theme,
     #[serde(default = "default_debug_mode")]
     pub debug_mode: bool,
     #[serde(default = "default_log_level")]
     pub log_level: LogLevel,
     #[serde(default)]
     pub custom_words: Vec<String>,
+    #[serde(default)]
+    pub learned_corrections: Vec<LearnedCorrection>,
     #[serde(default)]
     pub model_unload_timeout: ModelUnloadTimeout,
     #[serde(default = "default_word_correction_threshold")]
@@ -467,6 +505,10 @@ fn default_overlay_position() -> OverlayPosition {
     return OverlayPosition::None;
     #[cfg(not(target_os = "linux"))]
     return OverlayPosition::Bottom;
+}
+
+fn default_theme() -> Theme {
+    Theme::System
 }
 
 fn default_debug_mode() -> bool {
@@ -769,6 +811,7 @@ pub fn get_default_settings() -> AppSettings {
     AppSettings {
         bindings,
         push_to_talk: true,
+        transcribe_activation: TranscribeActivation::default(),
         audio_feedback: false,
         audio_feedback_volume: default_audio_feedback_volume(),
         sound_theme: default_sound_theme(),
@@ -783,9 +826,11 @@ pub fn get_default_settings() -> AppSettings {
         translate_to_english: false,
         selected_language: "auto".to_string(),
         overlay_position: default_overlay_position(),
+        theme: default_theme(),
         debug_mode: false,
         log_level: default_log_level(),
         custom_words: Vec::new(),
+        learned_corrections: Vec::new(),
         model_unload_timeout: ModelUnloadTimeout::default(),
         word_correction_threshold: default_word_correction_threshold(),
         history_limit: default_history_limit(),

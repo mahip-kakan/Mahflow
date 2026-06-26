@@ -1,6 +1,14 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Cog, FlaskConical, History, Info, Sparkles, Cpu } from "lucide-react";
+import {
+  Cog,
+  FlaskConical,
+  History,
+  Info,
+  Sparkles,
+  Cpu,
+  BarChart3,
+} from "lucide-react";
 import MahflowTextLogo from "./icons/MahflowTextLogo";
 import MahflowIcon from "./icons/MahflowIcon";
 import { useSettings } from "../hooks/useSettings";
@@ -12,6 +20,7 @@ import {
   AboutSettings,
   PostProcessingSettings,
   ModelsSettings,
+  InsightsSettings,
 } from "./settings";
 
 export type SidebarSection = keyof typeof SECTIONS_CONFIG;
@@ -54,6 +63,12 @@ export const SECTIONS_CONFIG = {
     labelKey: "sidebar.history",
     icon: History,
     component: HistorySettings,
+    enabled: () => true,
+  },
+  insights: {
+    labelKey: "sidebar.insights",
+    icon: BarChart3,
+    component: InsightsSettings,
     enabled: () => true,
   },
   postprocessing: {

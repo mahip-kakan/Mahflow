@@ -6,6 +6,7 @@ export { HistorySettings } from "./history/HistorySettings";
 export { AboutSettings } from "./about/AboutSettings";
 export { PostProcessingSettings } from "./post-processing/PostProcessingSettings";
 export { ModelsSettings } from "./models/ModelsSettings";
+export { InsightsSettings } from "./insights/InsightsSettings";
 
 // Individual setting components
 export { MicrophoneSelector } from "./MicrophoneSelector";
@@ -20,6 +21,7 @@ export { MahflowKeysShortcutInput } from "./MahflowKeysShortcutInput";
 export { ShortcutInput } from "./ShortcutInput";
 export { TranslateToEnglish } from "./TranslateToEnglish";
 export { CustomWords } from "./CustomWords";
+export { ThemeSelector } from "./ThemeSelector";
 export { PostProcessingToggle } from "./PostProcessingToggle";
 export { PostProcessingSettingsApi } from "./PostProcessingSettingsApi";
 export { PostProcessingSettingsPrompts } from "./PostProcessingSettingsPrompts";

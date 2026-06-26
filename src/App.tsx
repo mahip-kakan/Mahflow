@@ -17,6 +17,7 @@ import { useSettings } from "./hooks/useSettings";
 import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
+import { watchTheme } from "@/lib/utils/theme";
 
 type OnboardingStep = "accessibility" | "model" | "done";
 
@@ -54,6 +55,12 @@ function App() {
   useEffect(() => {
     initializeRTL(i18n.language);
   }, [i18n.language]);
+
+  // Apply the selected visual theme; keep it synced with the OS when set to
+  // "system". The cleanup removes the OS-appearance listener on change/unmount.
+  useEffect(() => {
+    return watchTheme(settings?.theme ?? "system");
+  }, [settings?.theme]);
 
   // Initialize Enigo, shortcuts, and refresh audio devices when main app loads
   useEffect(() => {
@@ -250,7 +257,7 @@ function App() {
   return (
     <div
       dir={direction}
-      className="h-screen flex flex-col select-none cursor-default"
+      className="h-screen flex flex-col select-none cursor-default bg-transparent"
     >
       <Toaster
         theme="system"
@@ -258,7 +265,7 @@ function App() {
           unstyled: true,
           classNames: {
             toast:
-              "bg-background border border-mid-gray/20 rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 text-sm",
+              "glass-strong border border-mid-gray/20 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 text-sm",
             title: "font-medium",
             description: "text-mid-gray",
           },

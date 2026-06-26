@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Drive Tailwind's `dark:` variant from our own `data-theme` attribute instead
+   of the OS media query, so manual theme selection (light / dark / mah) stays
+   consistent between Tailwind utilities and our CSS-variable palettes. The
+   theme resolver sets `data-theme` to a concrete value (system resolves to
+   light/dark at runtime). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   /* ---- Mahflow design tokens (modern "liquid glass") ---- */
   /* Cool neutral palette, single restrained indigo/slate accent. No pink. */
@@ -12,24 +19,25 @@
   --color-mid-gray: #6b7488;
 
   /* ---- Glass surface tokens ----
-     Tint + hairline border + edge highlight + layered shadow are what make
-     glass read as glass (per 2026 best practice). Opacity is kept high enough
-     (>=55%) that text on these surfaces stays legible over the gradient. */
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-bg-strong: rgba(255, 255, 255, 0.74);
-  --glass-border: rgba(255, 255, 255, 0.7);
-  /* Inset top highlight (the "rim" of the glass) + soft outer lift. */
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+     Lower opacity + stronger blur so the desktop/backdrop refracts through
+     panels like real frosted glass. Hairline border + inset highlight sell the rim. */
+  --glass-bg: rgba(255, 255, 255, 0.2);
+  --glass-bg-strong: rgba(255, 255, 255, 0.34);
+  --glass-border: rgba(255, 255, 255, 0.28);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.45);
   --glass-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 10px 34px rgba(22, 27, 38, 0.1),
-    0 2px 8px rgba(22, 27, 38, 0.06);
-  --glass-radius: 18px;
+    0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 16px 48px rgba(22, 27, 38, 0.12),
+    0 2px 10px rgba(22, 27, 38, 0.08);
+  --glass-radius: 20px;
+  --glass-blur: 28px;
+  --glass-blur-strong: 36px;
 }
 
 :root {
-  /* Typography */
-  font-size: 15px;
-  line-height: 24px;
+  /* Typography — a slightly larger, airier base than before for a cleaner,
+     more spacious feel across the whole app. */
+  font-size: 16px;
+  line-height: 26px;
   font-weight: 400;
 
   font-synthesis: none;
@@ -50,26 +58,54 @@
 
   color: var(--color-text);
 
-  /* Vivid, layered gradient backdrop. Glass only reads as glass when there's
-     genuine color and depth behind it to refract — so we use three soft color
-     blobs (indigo / violet / aqua) over a cool base. */
-  background-color: var(--color-background);
-  background-image: radial-gradient(
+  /* Colorful backdrop — visible through transparent glass panels. */
+  --app-backdrop-image: radial-gradient(
       1100px 760px at 8% -10%,
-      rgba(99, 116, 240, 0.34),
+      rgba(99, 116, 240, 0.42),
       transparent 58%
     ),
     radial-gradient(
       980px 720px at 108% 4%,
-      rgba(139, 110, 230, 0.26),
+      rgba(139, 110, 230, 0.34),
       transparent 56%
     ),
     radial-gradient(
       900px 820px at 88% 112%,
-      rgba(72, 191, 205, 0.22),
+      rgba(72, 191, 205, 0.28),
       transparent 60%
     ),
+    radial-gradient(
+      720px 620px at 22% 68%,
+      rgba(230, 130, 110, 0.22),
+      transparent 58%
+    ),
     linear-gradient(180deg, #f3f5fc 0%, #e6eaf5 100%);
+  background-color: var(--color-background);
+  background-image: var(--app-backdrop-image);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* Transparent webview shell (macOS / Windows) — native vibrancy blurs the
+   desktop; an internal backdrop layer keeps our colorful gradients. */
+html[data-glass-window="true"] {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+html[data-glass-window="true"] body,
+html[data-glass-window="true"] #root {
+  background: transparent !important;
+}
+
+html[data-glass-window="true"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--color-background);
+  background-image: var(--app-backdrop-image);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
@@ -83,8 +119,12 @@
   text-align: center;
 }
 
+/* System dark, pre-hydration only: applies the dark palette when the OS is in
+   dark mode AND the theme resolver has not yet stamped an explicit data-theme.
+   Once JS runs, `data-theme` is always set (system resolves to light/dark), so
+   the explicit blocks below take over. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     /* Dark theme overrides (plain custom-property overrides; Tailwind tokens
        resolve these at runtime via var()). */
     --color-text: #e7eaf3;
@@ -94,35 +134,127 @@
     --color-logo-stroke: #e7eaf3;
     --color-mid-gray: #8b93a8;
 
-    /* Dark glass is its own material: higher tint opacity so the surface
-       stays distinct, and a brighter border since the blur contrast drops. */
-    --glass-bg: rgba(34, 40, 54, 0.58);
-    --glass-bg-strong: rgba(38, 45, 61, 0.76);
-    --glass-border: rgba(255, 255, 255, 0.12);
-    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    /* Dark glass: smoky tint so wallpaper bleeds through like frosted obsidian. */
+    --glass-bg: rgba(10, 12, 18, 0.44);
+    --glass-bg-strong: rgba(16, 18, 26, 0.58);
+    --glass-border: rgba(255, 255, 255, 0.14);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12);
     --glass-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 40px rgba(0, 0, 0, 0.45),
-      0 2px 10px rgba(0, 0, 0, 0.3);
+      inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 48px rgba(0, 0, 0, 0.5),
+      0 2px 12px rgba(0, 0, 0, 0.35);
 
-    --color-log-surface: rgba(18, 22, 30, 0.6);
+    --color-log-surface: rgba(18, 22, 30, 0.52);
 
-    background-image: radial-gradient(
+    --app-backdrop-image: radial-gradient(
+        900px 680px at 12% 18%,
+        rgba(214, 122, 108, 0.38),
+        transparent 58%
+      ),
+      radial-gradient(
+        820px 640px at 88% 78%,
+        rgba(72, 140, 100, 0.32),
+        transparent 56%
+      ),
+      radial-gradient(
         1100px 760px at 8% -10%,
-        rgba(99, 116, 240, 0.28),
+        rgba(99, 116, 240, 0.24),
         transparent 58%
       ),
       radial-gradient(
         980px 720px at 108% 4%,
-        rgba(120, 96, 210, 0.24),
+        rgba(120, 96, 210, 0.2),
         transparent 56%
       ),
-      radial-gradient(
-        900px 820px at 88% 112%,
-        rgba(52, 150, 168, 0.2),
-        transparent 60%
-      ),
-      linear-gradient(180deg, #181c27 0%, #11131a 100%);
+      linear-gradient(180deg, #181c27 0%, #0e1016 100%);
+    background-image: var(--app-backdrop-image);
   }
+}
+
+/* ---- Explicit theme palettes (set by the theme resolver via data-theme) ----
+   `light` deliberately has no block: it inherits the default `:root`/@theme
+   light tokens, and because an explicit data-theme is present the system-dark
+   media query above no longer matches. */
+
+:root[data-theme="dark"] {
+  --color-text: #e7eaf3;
+  --color-background: #14171f;
+  --color-background-ui: #7c8df0;
+  --color-logo-primary: #93a1f4;
+  --color-logo-stroke: #e7eaf3;
+  --color-mid-gray: #8b93a8;
+
+  --glass-bg: rgba(10, 12, 18, 0.44);
+  --glass-bg-strong: rgba(16, 18, 26, 0.58);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 48px rgba(0, 0, 0, 0.5),
+    0 2px 12px rgba(0, 0, 0, 0.35);
+
+  --color-log-surface: rgba(18, 22, 30, 0.52);
+
+  --app-backdrop-image: radial-gradient(
+      900px 680px at 12% 18%,
+      rgba(214, 122, 108, 0.38),
+      transparent 58%
+    ),
+    radial-gradient(
+      820px 640px at 88% 78%,
+      rgba(72, 140, 100, 0.32),
+      transparent 56%
+    ),
+    radial-gradient(
+      1100px 760px at 8% -10%,
+      rgba(99, 116, 240, 0.24),
+      transparent 58%
+    ),
+    radial-gradient(
+      980px 720px at 108% 4%,
+      rgba(120, 96, 210, 0.2),
+      transparent 56%
+    ),
+    linear-gradient(180deg, #181c27 0%, #0e1016 100%);
+  background-image: var(--app-backdrop-image);
+}
+
+/* "Mah" — warm linen + teal accent with translucent glass (not flat opaque). */
+:root[data-theme="mah"] {
+  --color-text: #1f2420;
+  --color-background: #f4f1ea;
+  --color-background-ui: #0f766e; /* teal primary */
+  --color-logo-primary: #2aa195; /* soft teal accent / active states */
+  --color-logo-stroke: #1f2420;
+  --color-text-stroke: #ffffff;
+  --color-mid-gray: #79776e;
+
+  --glass-bg: rgba(255, 252, 246, 0.28);
+  --glass-bg-strong: rgba(255, 252, 246, 0.42);
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --glass-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 14px 40px rgba(31, 36, 32, 0.1),
+    0 2px 10px rgba(31, 36, 32, 0.06);
+  --glass-radius: 18px;
+
+  --color-log-surface: rgba(255, 255, 255, 0.38);
+
+  --app-backdrop-image: radial-gradient(
+      1200px 820px at 100% -12%,
+      rgba(42, 161, 149, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 700px at -8% 110%,
+      rgba(15, 118, 110, 0.14),
+      transparent 60%
+    ),
+    radial-gradient(
+      700px 560px at 70% 40%,
+      rgba(230, 170, 120, 0.12),
+      transparent 58%
+    ),
+    linear-gradient(180deg, #f7f4ee 0%, #efece4 100%);
+  background-image: var(--app-backdrop-image);
 }
 
 /* ---- Frosted glass surfaces ----
@@ -131,8 +263,8 @@
    compositing cheap. */
 .glass {
   background-color: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   will-change: transform;
@@ -140,8 +272,8 @@
 
 .glass-strong {
   background-color: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(20px) saturate(170%);
-  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(190%);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(190%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   will-change: transform;
@@ -149,16 +281,17 @@
 
 .glass-panel {
   background-color: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(165%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(165%);
+  border-inline-end: 1px solid var(--glass-border);
   box-shadow: var(--glass-highlight);
 }
 
 /* A self-contained rounded glass card (the main building block for panels). */
 .glass-card {
   background-color: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(18px) saturate(165%);
-  backdrop-filter: blur(18px) saturate(165%);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 4px)) saturate(185%);
+  backdrop-filter: blur(calc(var(--glass-blur) + 4px)) saturate(185%);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius);
   box-shadow: var(--glass-shadow);
