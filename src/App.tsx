@@ -21,6 +21,27 @@ import { watchTheme } from "@/lib/utils/theme";
 
 type OnboardingStep = "accessibility" | "model" | "done";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Right after login, macOS can briefly say Accessibility is missing even when
+// it was already allowed. Ask a few times before showing the permission screen.
+async function macPermissionsGranted(): Promise<{
+  accessibility: boolean;
+  microphone: boolean;
+}> {
+  let accessibility = false;
+  let microphone = false;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    [accessibility, microphone] = await Promise.all([
+      checkAccessibilityPermission(),
+      checkMicrophonePermission(),
+    ]);
+    if (accessibility && microphone) break;
+    if (attempt < 3) await sleep(350);
+  }
+  return { accessibility, microphone };
+}
+
 const renderSettingsContent = (section: SidebarSection) => {
   const ActiveComponent =
     SECTIONS_CONFIG[section]?.component || SECTIONS_CONFIG.general.component;
@@ -69,9 +90,11 @@ function App() {
       Promise.all([
         commands.initializeEnigo(),
         commands.initializeShortcuts(),
-      ]).catch((e) => {
-        console.warn("Failed to initialize:", e);
-      });
+      ])
+        .catch((e) => {
+          console.warn("Failed to initialize:", e);
+        })
+        .then(() => useSettingsStore.getState().refreshSettings());
       refreshAudioDevices();
       refreshOutputDevices();
     }
@@ -185,10 +208,8 @@ function App() {
 
         if (currentPlatform === "macos") {
           try {
-            const [hasAccessibility, hasMicrophone] = await Promise.all([
-              checkAccessibilityPermission(),
-              checkMicrophonePermission(),
-            ]);
+            const { accessibility: hasAccessibility, microphone: hasMicrophone } =
+              await macPermissionsGranted();
             if (!hasAccessibility || !hasMicrophone) {
               await revealMainWindowForPermissions();
               setOnboardingStep("accessibility");

@@ -998,7 +998,7 @@ mod tests {
         let rows = vec![
             row(today, "hello world", None),                // 2 words (raw)
             row(today, "raw text here", Some("two words")), // 2 words (prefers processed)
-            row(today, "  ", Some("   ")),                  // blank processed -> falls back to raw -> 0
+            row(today, "  ", Some("   ")), // blank processed -> falls back to raw -> 0
         ];
         let insights = HistoryManager::aggregate_usage_insights(rows, today, 3, 5);
         assert_eq!(insights.total_recordings, 3);

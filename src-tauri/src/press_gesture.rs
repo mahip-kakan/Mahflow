@@ -19,9 +19,7 @@ pub fn evaluate_double_press(last: Option<Instant>, now: Instant) -> (bool, Opti
 }
 
 fn register_double_press(slot: &Mutex<Option<Instant>>) -> bool {
-    let mut guard = slot
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut guard = slot.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let now = Instant::now();
     let (is_double, updated) = evaluate_double_press(*guard, now);
     *guard = updated;

@@ -44,6 +44,22 @@ pub fn handle_shortcut_event(
         return;
     }
 
+    // Paste binding: only while recording. Enter finishes and pastes;
+    // it is not registered the rest of the time, so normal Enter still works.
+    if binding_id == "commit" {
+        if is_pressed {
+            let audio_manager = app.state::<Arc<AudioRecordingManager>>();
+            if audio_manager.is_recording() {
+                if let Some(coordinator) = app.try_state::<TranscriptionCoordinator>() {
+                    coordinator.notify_commit();
+                } else {
+                    warn!("TranscriptionCoordinator is not initialized");
+                }
+            }
+        }
+        return;
+    }
+
     let Some(action) = ACTION_MAP.get(binding_id) else {
         warn!(
             "No action defined in ACTION_MAP for shortcut ID '{}'. Shortcut: '{}', Pressed: {}",

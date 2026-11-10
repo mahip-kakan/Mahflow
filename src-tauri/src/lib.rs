@@ -45,7 +45,7 @@ pub use transcription_coordinator::TranscriptionCoordinator;
 
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Listener, Manager};
-use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
 
 use crate::settings::get_settings;
@@ -310,17 +310,12 @@ fn initialize_core_logic(app_handle: &AppHandle) {
         tray::update_tray_menu(&app_handle_for_listener, &tray::TrayIconState::Idle, None);
     });
 
-    // Get the autostart manager and configure based on user setting
-    let autostart_manager = app_handle.autolaunch();
     let settings = settings::get_settings(&app_handle);
 
-    if settings.autostart_enabled {
-        // Enable autostart if user has opted in
-        let _ = autostart_manager.enable();
-    } else {
-        // Disable autostart if user has opted out
-        let _ = autostart_manager.disable();
-    }
+    // Login must start Mahflow.app, not the raw binary inside it. macOS
+    // remembers Accessibility for the app; a raw binary looks like a new app
+    // after every restart and the permission prompt comes back.
+    shortcut::apply_autostart(&app_handle, settings.autostart_enabled);
 
     // Create the recording overlay window (hidden by default)
     utils::create_recording_overlay(app_handle);

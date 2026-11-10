@@ -187,6 +187,10 @@
             "name": "Cancel Shortcut",
             "description": "The keyboard shortcut to cancel the current recording."
           },
+          "commit": {
+            "name": "Paste Shortcut",
+            "description": "While you are recording, press this to finish and paste the text. Escape still cancels."
+          },
           "transcribe_with_post_process": {
             "name": "Post-Processing Hotkey",
             "description": "Optional: A dedicated hotkey that always applies AI post-processing to your transcription."

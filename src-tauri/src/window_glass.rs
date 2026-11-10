@@ -2,8 +2,8 @@
 //! CSS `backdrop-filter` on panels blurs content inside the webview; these
 //! APIs blur the desktop behind the window on macOS and Windows.
 
-use tauri::WebviewWindow;
 use tauri::window::{Color, Effect, EffectState, EffectsBuilder};
+use tauri::WebviewWindow;
 
 /// Make the main window transparent and apply platform-native frosted glass.
 pub fn apply_main_window_glass(window: &WebviewWindow) {

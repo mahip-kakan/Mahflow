@@ -38,6 +38,26 @@ impl Drop for FinishGuard {
     }
 }
 
+/// Keeps Return swallowed until this value is dropped, which is after the
+/// transcript has been pasted.
+struct HoldReturnKeys(Option<AppHandle>);
+impl HoldReturnKeys {
+    fn new(app: Option<AppHandle>) -> Self {
+        Self(app)
+    }
+
+    fn take(&mut self) -> Self {
+        Self(self.0.take())
+    }
+}
+impl Drop for HoldReturnKeys {
+    fn drop(&mut self) {
+        if let Some(app) = self.0.take() {
+            shortcut::unregister_recording_shortcuts(&app);
+        }
+    }
+}
+
 // Shortcut Action Trait
 pub trait ShortcutAction: Send + Sync {
     fn start(&self, app: &AppHandle, binding_id: &str, shortcut_str: &str);
@@ -473,7 +493,8 @@ impl ShortcutAction for TranscribeAction {
 
         if recording_error.is_none() {
             // Dynamically register the cancel shortcut in a separate task to avoid deadlock
-            shortcut::register_cancel_shortcut(app);
+            // Escape cancels. Enter pastes, except in push-to-talk where release already pastes.
+            shortcut::register_recording_shortcuts(app, !settings.push_to_talk);
             // Kick off the live-preview loop (no-op unless the setting is on).
             crate::live_preview::start(app);
         } else {
@@ -505,9 +526,14 @@ impl ShortcutAction for TranscribeAction {
         );
     }
 
-    fn stop(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
-        // Unregister the cancel shortcut when transcription stops
-        shortcut::unregister_cancel_shortcut(app);
+    fn stop(&self, app: &AppHandle, binding_id: &str, shortcut_str: &str) {
+        // Return must stay swallowed until the words are pasted. If we let go
+        // first, that same Return reaches the page and sends or clears it
+        // before the paste arrives. Option+Space already released the key.
+        let hold_return = shortcut_str == "commit";
+        if !hold_return {
+            shortcut::unregister_recording_shortcuts(app);
+        }
         // Stop the live-preview loop so it releases the transcription lock for
         // the final (full-buffer) transcription below.
         crate::live_preview::stop();
@@ -534,6 +560,9 @@ impl ShortcutAction for TranscribeAction {
 
         tauri::async_runtime::spawn(async move {
             let _guard = FinishGuard(ah.clone());
+            // Dropped on every exit except the paste, which keeps Return
+            // swallowed until the words have been inserted.
+            let mut hold_return_keys = HoldReturnKeys::new(hold_return.then(|| ah.clone()));
             debug!(
                 "Starting async transcription task for binding: {}",
                 binding_id
@@ -625,6 +654,7 @@ impl ShortcutAction for TranscribeAction {
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
                                 let final_text = processed.final_text;
+                                let release_return = hold_return_keys.take();
                                 ah.run_on_main_thread(move || {
                                     match utils::paste(final_text, ah_clone.clone()) {
                                         Ok(()) => debug!(
@@ -638,6 +668,7 @@ impl ShortcutAction for TranscribeAction {
                                     }
                                     utils::hide_recording_overlay(&ah_clone);
                                     change_tray_icon(&ah_clone, TrayIconState::Idle);
+                                    drop(release_return);
                                 })
                                 .unwrap_or_else(|e| {
                                     error!("Failed to run paste on main thread: {:?}", e);

@@ -147,8 +147,10 @@ fn build_apple_intelligence_bridge() {
     // Use the stub bridge by default so Mahflow builds reliably without the
     // FoundationModels macro plugin. Set MAHFLOW_APPLE_INTELLIGENCE=1 to opt in.
     let use_apple_intelligence = env::var("MAHFLOW_APPLE_INTELLIGENCE").is_ok_and(|v| v == "1");
-    let has_foundation_models =
-        use_apple_intelligence && Path::new(&sdk_path).join("System/Library/Frameworks/FoundationModels.framework").exists();
+    let has_foundation_models = use_apple_intelligence
+        && Path::new(&sdk_path)
+            .join("System/Library/Frameworks/FoundationModels.framework")
+            .exists();
 
     let source_file = if has_foundation_models {
         println!("cargo:warning=Building with Apple Intelligence support.");

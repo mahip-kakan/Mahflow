@@ -11,6 +11,7 @@
 
 mod handler;
 pub mod mahflow_keys;
+mod recording_grab;
 mod tauri_impl;
 
 use log::{error, info, warn};
@@ -56,21 +57,39 @@ pub fn init_shortcuts(app: &AppHandle) {
     }
 }
 
-/// Register the cancel shortcut (called when recording starts)
-pub fn register_cancel_shortcut(app: &AppHandle) {
+/// Bindings that must not be global all the time.
+/// Cancel (Escape) and paste (Enter) are registered only while recording,
+/// otherwise they would swallow those keys in every app.
+pub fn is_recording_only_binding(id: &str) -> bool {
+    id == "cancel" || id == "commit"
+}
+
+/// Register the keys that only apply during a recording.
+/// `paste_on_enter` is false for push-to-talk, where releasing the shortcut pastes.
+pub fn register_recording_shortcuts(app: &AppHandle, paste_on_enter: bool) {
+    let mut ids = vec!["cancel".to_string()];
+    if paste_on_enter {
+        ids.push("commit".to_string());
+    }
     let settings = get_settings(app);
     match settings.keyboard_implementation {
-        KeyboardImplementation::Tauri => tauri_impl::register_cancel_shortcut(app),
-        KeyboardImplementation::MahflowKeys => mahflow_keys::register_cancel_shortcut(app),
+        // Carbon cannot take a plain Return away from a text box. Grab it
+        // with an event tap so Return ends the recitation and pastes.
+        KeyboardImplementation::Tauri => recording_grab::install(app, &ids),
+        KeyboardImplementation::MahflowKeys => mahflow_keys::register_dynamic_shortcuts(app, &ids),
     }
 }
 
-/// Unregister the cancel shortcut (called when recording stops)
-pub fn unregister_cancel_shortcut(app: &AppHandle) {
+/// Unregister the recording-only keys. Safe to call if they were not registered.
+pub fn unregister_recording_shortcuts(app: &AppHandle) {
+    recording_grab::uninstall(app);
+    let ids = vec!["cancel".to_string(), "commit".to_string()];
     let settings = get_settings(app);
     match settings.keyboard_implementation {
-        KeyboardImplementation::Tauri => tauri_impl::unregister_cancel_shortcut(app),
-        KeyboardImplementation::MahflowKeys => mahflow_keys::unregister_cancel_shortcut(app),
+        KeyboardImplementation::Tauri => tauri_impl::unregister_dynamic_shortcuts(app, &ids),
+        KeyboardImplementation::MahflowKeys => {
+            mahflow_keys::unregister_dynamic_shortcuts(app, &ids)
+        }
     }
 }
 
@@ -144,9 +163,9 @@ pub fn change_binding(
         }
     };
 
-    // If this is the cancel binding, just update the settings and return
-    // It's managed dynamically, so we don't register/unregister here
-    if id == "cancel" {
+    // Recording-only bindings are registered when a recording starts, not now.
+    // Saving Enter as a permanent global shortcut would paste on every Enter.
+    if is_recording_only_binding(&id) {
         if let Some(mut b) = settings.bindings.get(&id).cloned() {
             b.current_binding = binding;
             settings.bindings.insert(id.clone(), b.clone());
@@ -213,6 +232,9 @@ pub fn reset_binding(app: AppHandle, id: String) -> Result<BindingResponse, Stri
 #[tauri::command]
 #[specta::specta]
 pub fn suspend_binding(app: AppHandle, id: String) -> Result<(), String> {
+    if is_recording_only_binding(&id) {
+        return Ok(());
+    }
     if let Some(b) = settings::get_bindings(&app).get(&id).cloned() {
         if let Err(e) = unregister_shortcut(&app, b) {
             error!("suspend_binding error for id '{}': {}", id, e);
@@ -226,6 +248,9 @@ pub fn suspend_binding(app: AppHandle, id: String) -> Result<(), String> {
 #[tauri::command]
 #[specta::specta]
 pub fn resume_binding(app: AppHandle, id: String) -> Result<(), String> {
+    if is_recording_only_binding(&id) {
+        return Ok(());
+    }
     if let Some(b) = settings::get_bindings(&app).get(&id).cloned() {
         if let Err(e) = register_shortcut(&app, b) {
             error!("resume_binding error for id '{}': {}", id, e);
@@ -360,8 +385,8 @@ fn unregister_all_shortcuts(app: &AppHandle, implementation: KeyboardImplementat
     let bindings = settings::get_bindings(app);
 
     for (id, binding) in bindings {
-        // Skip cancel shortcut as it's dynamically registered
-        if id == "cancel" {
+        // Skip keys that are only registered while recording
+        if is_recording_only_binding(&id) {
             continue;
         }
 
@@ -389,8 +414,8 @@ fn register_all_shortcuts_for_implementation(
     let mut current_settings = settings::get_settings(app);
 
     for (id, default_binding) in &default_bindings {
-        // Skip cancel shortcut as it's dynamically registered
-        if id == "cancel" {
+        // Skip keys that are only registered while recording
+        if is_recording_only_binding(&id) {
             continue;
         }
 
@@ -643,6 +668,111 @@ pub fn change_start_hidden_setting(app: AppHandle, enabled: bool) -> Result<(), 
     Ok(())
 }
 
+/// Turn login launch on or off.
+///
+/// On macOS the login helper must open the `.app` bundle. The old helper ran
+/// `Mahflow.app/Contents/MacOS/mahflow` directly, so after a restart macOS
+/// treated that Unix executable as a different program and asked for
+/// Accessibility again.
+pub fn apply_autostart(app: &AppHandle, enabled: bool) {
+    if !enabled {
+        if let Err(e) = app.autolaunch().disable() {
+            warn!("Failed to disable autostart: {e}");
+        }
+        return;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        match install_macos_bundle_launch_agent() {
+            Ok(()) => return,
+            Err(e) => {
+                warn!("Bundle login item unavailable ({e}); using the default login helper");
+            }
+        }
+    }
+
+    if let Err(e) = app.autolaunch().enable() {
+        warn!("Failed to enable autostart: {e}");
+    }
+}
+
+/// LaunchAgent plist that opens the app bundle through Launch Services.
+fn bundle_launch_agent_plist(app_path: &str) -> String {
+    fn escape(value: &str) -> String {
+        value
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+    }
+
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>Mahflow</string>
+  <key>AssociatedBundleIdentifiers</key>
+  <array>
+    <string>com.mahip.mahflow</string>
+  </array>
+  <key>LimitLoadToSessionType</key>
+  <string>Aqua</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/open</string>
+    <string>-g</string>
+    <string>-a</string>
+    <string>{path}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+"#,
+        path = escape(app_path)
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn install_macos_bundle_launch_agent() -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let exe = exe.canonicalize().unwrap_or(exe);
+    let bundle = exe
+        .parent()
+        .and_then(|macos| macos.parent())
+        .and_then(|contents| contents.parent())
+        .ok_or_else(|| "could not resolve the app bundle".to_string())?;
+    if bundle.extension().and_then(|ext| ext.to_str()) != Some("app") {
+        return Err("not running from an app bundle".into());
+    }
+
+    let home = std::env::var_os("HOME").ok_or_else(|| "HOME is not set".to_string())?;
+    let dir = std::path::PathBuf::from(home).join("Library/LaunchAgents");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let plist_path = dir.join("Mahflow.plist");
+    let plist = bundle_launch_agent_plist(&bundle.display().to_string());
+    std::fs::write(&plist_path, plist).map_err(|e| e.to_string())?;
+    info!("Installed login helper that opens {}", bundle.display());
+    Ok(())
+}
+
+#[cfg(test)]
+mod autostart_tests {
+    use super::bundle_launch_agent_plist;
+
+    #[test]
+    fn login_helper_opens_the_app_bundle() {
+        let plist = bundle_launch_agent_plist("/Users/me/Applications/Mahflow.app");
+        assert!(plist.contains("/usr/bin/open"));
+        assert!(plist.contains("-g"));
+        assert!(plist.contains("/Users/me/Applications/Mahflow.app"));
+        assert!(plist.contains("com.mahip.mahflow"));
+        assert!(!plist.contains("Contents/MacOS"));
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn change_autostart_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
@@ -650,13 +780,7 @@ pub fn change_autostart_setting(app: AppHandle, enabled: bool) -> Result<(), Str
     settings.autostart_enabled = enabled;
     settings::write_settings(&app, settings);
 
-    // Apply the autostart setting immediately
-    let autostart_manager = app.autolaunch();
-    if enabled {
-        let _ = autostart_manager.enable();
-    } else {
-        let _ = autostart_manager.disable();
-    }
+    apply_autostart(&app, enabled);
 
     // Notify frontend
     let _ = app.emit(
@@ -728,11 +852,7 @@ pub fn add_learned_corrections(
 /// Remove a single learned correction matching both `from` and `to`.
 #[tauri::command]
 #[specta::specta]
-pub fn remove_learned_correction(
-    app: AppHandle,
-    from: String,
-    to: String,
-) -> Result<(), String> {
+pub fn remove_learned_correction(app: AppHandle, from: String, to: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings
         .learned_corrections

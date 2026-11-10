@@ -430,7 +430,7 @@ pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
 
     // Register all bindings except cancel (which is dynamic)
     for (id, default_binding) in default_bindings {
-        if id == "cancel" {
+        if super::is_recording_only_binding(&id) {
             continue;
         }
         // Skip post-processing shortcut when the feature is disabled
@@ -457,23 +457,27 @@ pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Register the cancel shortcut (called when recording starts)
-pub fn register_cancel_shortcut(app: &AppHandle) {
-    // Disabled on Linux due to instability
+/// Register shortcuts that should exist only while recording (Escape, Enter).
+pub fn register_dynamic_shortcuts(app: &AppHandle, ids: &[String]) {
     #[cfg(target_os = "linux")]
     {
-        let _ = app;
+        let _ = (app, ids);
         return;
     }
 
     #[cfg(not(target_os = "linux"))]
     {
         let app_clone = app.clone();
+        let ids = ids.to_vec();
         tauri::async_runtime::spawn(async move {
-            if let Some(cancel_binding) = get_settings(&app_clone).bindings.get("cancel").cloned() {
-                if let Some(state) = app_clone.try_state::<MahflowKeysState>() {
-                    if let Err(e) = state.register(&cancel_binding) {
-                        error!("Failed to register cancel shortcut: {}", e);
+            let settings = get_settings(&app_clone);
+            let Some(state) = app_clone.try_state::<MahflowKeysState>() else {
+                return;
+            };
+            for id in ids {
+                if let Some(binding) = settings.bindings.get(&id).cloned() {
+                    if let Err(e) = state.register(&binding) {
+                        error!("Failed to register {} shortcut: {}", id, e);
                     }
                 }
             }
@@ -481,21 +485,26 @@ pub fn register_cancel_shortcut(app: &AppHandle) {
     }
 }
 
-/// Unregister the cancel shortcut (called when recording stops)
-pub fn unregister_cancel_shortcut(app: &AppHandle) {
+/// Unregister shortcuts that should exist only while recording.
+pub fn unregister_dynamic_shortcuts(app: &AppHandle, ids: &[String]) {
     #[cfg(target_os = "linux")]
     {
-        let _ = app;
+        let _ = (app, ids);
         return;
     }
 
     #[cfg(not(target_os = "linux"))]
     {
         let app_clone = app.clone();
+        let ids = ids.to_vec();
         tauri::async_runtime::spawn(async move {
-            if let Some(cancel_binding) = get_settings(&app_clone).bindings.get("cancel").cloned() {
-                if let Some(state) = app_clone.try_state::<MahflowKeysState>() {
-                    let _ = state.unregister(&cancel_binding);
+            let settings = get_settings(&app_clone);
+            let Some(state) = app_clone.try_state::<MahflowKeysState>() else {
+                return;
+            };
+            for id in ids {
+                if let Some(binding) = settings.bindings.get(&id).cloned() {
+                    let _ = state.unregister(&binding);
                 }
             }
         });
@@ -546,4 +555,15 @@ pub fn stop_mahflow_keys_recording(app: AppHandle) -> Result<(), String> {
         .try_state::<MahflowKeysState>()
         .ok_or("MahflowKeysState not initialized")?;
     state.stop_recording()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_shortcut;
+
+    #[test]
+    fn enter_is_a_valid_paste_shortcut() {
+        validate_shortcut("enter").expect("enter should register as a hotkey");
+        validate_shortcut("escape").expect("escape should register as a hotkey");
+    }
 }

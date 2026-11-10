@@ -807,6 +807,16 @@ pub fn get_default_settings() -> AppSettings {
             current_binding: "escape".to_string(),
         },
     );
+    bindings.insert(
+        "commit".to_string(),
+        ShortcutBinding {
+            id: "commit".to_string(),
+            name: "Paste".to_string(),
+            description: "While recording, press this to finish and paste the text.".to_string(),
+            default_binding: "enter".to_string(),
+            current_binding: "enter".to_string(),
+        },
+    );
 
     AppSettings {
         bindings,
@@ -956,6 +966,15 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
         default_settings
     };
 
+    // Older installs don't have the Enter-to-paste binding. Add it once so
+    // the next recording can register it without a settings reset.
+    if !settings.bindings.contains_key("commit") {
+        if let Some(binding) = get_default_settings().bindings.get("commit").cloned() {
+            settings.bindings.insert("commit".to_string(), binding);
+            store.set("settings", serde_json::to_value(&settings).unwrap());
+        }
+    }
+
     if ensure_post_process_defaults(&mut settings) {
         store.set("settings", serde_json::to_value(&settings).unwrap());
     }
@@ -1004,6 +1023,13 @@ mod tests {
         let settings = get_default_settings();
         assert!(!settings.auto_submit);
         assert_eq!(settings.auto_submit_key, AutoSubmitKey::Enter);
+        assert_eq!(
+            settings
+                .bindings
+                .get("commit")
+                .map(|b| b.current_binding.as_str()),
+            Some("enter")
+        );
     }
 
     #[test]

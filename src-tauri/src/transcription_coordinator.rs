@@ -22,6 +22,9 @@ enum Command {
     Cancel {
         recording_was_active: bool,
     },
+    /// Stop the active recording and paste the transcript. Fired by the
+    /// Enter shortcut, which only exists while a recording is in progress.
+    Commit,
     ProcessingFinished,
 }
 
@@ -71,8 +74,7 @@ impl TranscriptionCoordinator {
                                 last_press = Some(now);
 
                                 if !push_to_talk {
-                                    let activation =
-                                        get_settings(&app).transcribe_activation;
+                                    let activation = get_settings(&app).transcribe_activation;
                                     if activation == TranscribeActivation::DoublePress
                                         && !press_gesture::register_transcribe_activation_press()
                                     {
@@ -116,6 +118,12 @@ impl TranscriptionCoordinator {
                                 stage = Stage::Idle;
                             }
                         }
+                        Command::Commit => {
+                            if let Stage::Recording(id) = &stage {
+                                let id = id.clone();
+                                stop(&app, &mut stage, &id, "commit");
+                            }
+                        }
                         Command::ProcessingFinished => {
                             stage = Stage::Idle;
                         }
@@ -150,6 +158,13 @@ impl TranscriptionCoordinator {
             })
             .is_err()
         {
+            warn!("Transcription coordinator channel closed");
+        }
+    }
+
+    /// Finish the recording that is in progress and paste its text.
+    pub fn notify_commit(&self) {
+        if self.tx.send(Command::Commit).is_err() {
             warn!("Transcription coordinator channel closed");
         }
     }
